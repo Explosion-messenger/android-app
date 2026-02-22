@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -373,18 +374,23 @@ fun MessageItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (isSelected) Color.White.copy(alpha = 0.1f) else Color.Transparent)
-            .combinedClickable(
-                onClick = {
-                    if (selectionMode) onSelect()
-                    else onShowReactionPopup()
-                },
-                onLongClick = { onSelect() }
-            )
-            .padding(vertical = 4.dp, horizontal = 16.dp),
+            .padding(vertical = 4.dp, horizontal = 12.dp),
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Bottom
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        // Selection Checkmark (Left side)
+        if (selectionMode) {
+            RadioButton(
+                selected = isSelected,
+                onClick = onSelect,
+                colors = RadioButtonDefaults.colors(
+                    selectedColor = AccentBlue,
+                    unselectedColor = TextDim
+                ),
+                modifier = Modifier.padding(end = 8.dp)
+            )
+        }
+
         if (!isMine) {
             Box(
                 modifier = Modifier
@@ -413,7 +419,17 @@ fun MessageItem(
         }
 
         Column(
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .combinedClickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        if (selectionMode) onSelect()
+                        else onShowReactionPopup()
+                    },
+                    onLongClick = { onSelect() }
+                ),
             horizontalAlignment = if (isMine) Alignment.End else Alignment.Start
         ) {
             if (showReactionPopup) {
@@ -435,7 +451,16 @@ fun MessageItem(
                 Column(
                     modifier = Modifier
                         .background(
-                            color = if (isMine) AccentBlue else BgSidebar,
+                            color = when {
+                                isSelected -> AccentBlue.copy(alpha = 0.3f)
+                                isMine -> AccentBlue
+                                else -> BgSidebar
+                            },
+                            shape = RoundedCornerShape(16.dp, 16.dp, if (isMine) 4.dp else 16.dp, if (isMine) 16.dp else 4.dp)
+                        )
+                        .border(
+                            width = if (isSelected) 2.dp else 0.dp,
+                            color = AccentBlue,
                             shape = RoundedCornerShape(16.dp, 16.dp, if (isMine) 4.dp else 16.dp, if (isMine) 16.dp else 4.dp)
                         )
                         .padding(12.dp)
@@ -500,6 +525,33 @@ fun MessageItem(
                             )
                         }
                     }
+                }
+            }
+        }
+
+        if (isMine) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(AccentBlue.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (msg.sender.avatar_path != null) {
+                    AsyncImage(
+                        model = "${Constants.AVATAR_URL}${msg.sender.avatar_path}",
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(
+                        text = (msg.sender.username).take(1).uppercase(),
+                        color = AccentBlue,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
             }
         }
