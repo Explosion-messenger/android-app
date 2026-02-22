@@ -24,18 +24,7 @@ class NeuralLinkService : Service() {
     }
 
     private fun startNeuralLinkForeground() {
-        val notification = NotificationCompat.Builder(this, NotificationHelper.CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle("Neural Link Active")
-            .setContentText("Listening for incoming data streams...")
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .build()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(1337, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(1337, notification)
-        }
+        // No longer starting foreground to avoid persistent notification
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
