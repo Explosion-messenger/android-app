@@ -264,41 +264,42 @@ fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, 
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(BgSidebar),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.size(56.dp)
         ) {
-            if (otherMember?.avatar_path != null) {
-                AsyncImage(
-                    model = "${com.explosion.messenger.util.Constants.AVATAR_URL}${otherMember.avatar_path}",
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text(
-                    text = (chat.name ?: otherMember?.username ?: "?").take(1).uppercase(),
-                    color = AccentBlue,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(BgSidebar),
+                contentAlignment = Alignment.Center
+            ) {
+                if (otherMember?.avatar_path != null) {
+                    AsyncImage(
+                        model = "${com.explosion.messenger.util.Constants.AVATAR_URL}${otherMember.avatar_path}",
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(
+                        text = (chat.name ?: otherMember?.username ?: "?").take(1).uppercase(),
+                        color = AccentBlue,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                }
             }
 
-            // Status Dot
+            // Status Dot (Non-clipping)
             if (!chat.is_group && status != "offline") {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(2.dp)
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(if (status == "online") Color(0xFF22C55E) else com.explosion.messenger.ui.theme.AwayYellow)
-                        .background(BgSidebar, CircleShape) // inner padding effect
-                        .padding(1.5.dp)
-                        .clip(CircleShape)
-                        .background(if (status == "online") Color(0xFF22C55E) else com.explosion.messenger.ui.theme.AwayYellow)
+                        .offset(x = 4.dp, y = 4.dp)
+                        .size(16.dp)
+                        .background(BgDark, CircleShape)
+                        .padding(2.5.dp)
+                        .background(if (status == "online") Color(0xFF22C55E) else com.explosion.messenger.ui.theme.AwayYellow, CircleShape)
                 )
             }
         }
@@ -320,7 +321,7 @@ fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, 
             Text(
                 text = typingText,
                 color = if (!typingUsers.isNullOrEmpty()) AccentBlue else TextDim,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 maxLines = 1,
                 fontWeight = if (!typingUsers.isNullOrEmpty()) FontWeight.Bold else FontWeight.Normal
             )
