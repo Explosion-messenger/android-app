@@ -65,4 +65,16 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
+    fun uploadAvatarPart(body: MultipartBody.Part) {
+        viewModelScope.launch {
+            try {
+                val response = api.uploadUserAvatar(body)
+                if (response.isSuccessful) {
+                    _currentUser.value = response.body()
+                }
+            } catch (e: Exception) {
+                // handle error
+            }
+        }
+    }
 }

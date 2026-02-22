@@ -20,9 +20,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.canhub.cropper.CropImageContract
-import com.canhub.cropper.CropImageContractOptions
-import com.canhub.cropper.CropImageOptions
+import com.explosion.messenger.ui.components.CircularCropperDialog
+import android.graphics.Bitmap
+import android.graphics.Bitmap.CompressFormat
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MultipartBody
 import coil.compose.AsyncImage
 import com.explosion.messenger.ui.theme.AccentBlue
 import com.explosion.messenger.ui.theme.BgDark
@@ -39,28 +42,31 @@ fun SettingsScreen(
     val user by viewModel.currentUser.collectAsState()
     val context = LocalContext.current
     
-    val cropImage = rememberLauncherForActivityResult(CropImageContract()) { result ->
-        if (result.isSuccessful) {
-            val uriContent = result.uriContent
-            if (uriContent != null) {
-                viewModel.uploadAvatar(context, uriContent)
-            }
-        }
-    }
+    var selectedUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var showCropper by remember { mutableStateOf(false) }
 
     val pickMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
-            cropImage.launch(
-                CropImageContractOptions(
-                    uri = uri,
-                    cropImageOptions = CropImageOptions(
-                        aspectRatioX = 1,
-                        aspectRatioY = 1,
-                        fixAspectRatio = true
-                    )
-                )
-            )
+            selectedUri = uri
+            showCropper = true
         }
+    }
+
+    if (showCropper && selectedUri != null) {
+        CircularCropperDialog(
+            uri = selectedUri!!,
+            onDismiss = { showCropper = false },
+            onCropped = { bitmap ->
+                showCropper = false
+                val bos = java.io.ByteArrayOutputStream()
+                bitmap.compress(CompressFormat.JPEG, 90, bos)
+                val bitmapData = bos.toByteArray()
+                
+                val requestFile = bitmapData.toRequestBody("image/jpeg".toMediaTypeOrNull())
+                val body = MultipartBody.Part.createFormData("file", "avatar.jpg", requestFile)
+                viewModel.uploadAvatarPart(body)
+            }
+        )
     }
 
     Scaffold(

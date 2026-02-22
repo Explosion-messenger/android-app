@@ -348,11 +348,22 @@ class MessageViewModel @Inject constructor(
                         onComplete(true) // User left group
                     } else {
                         // Re-fetch chat to get updated members
-                        val chatsResponse = api.getChats()
-                        if (chatsResponse.isSuccessful) {
-                            _currentChat.value = chatsResponse.body()?.find { it.id == currentChatId }
-                        }
+                        refreshChatMetadata()
                     }
+                }
+            } catch (e: Exception) {
+                // handle
+            }
+        }
+    }
+
+    fun refreshChatMetadata() {
+        if (currentChatId == -1) return
+        viewModelScope.launch {
+            try {
+                val response = api.getChats()
+                if (response.isSuccessful) {
+                    _currentChat.value = response.body()?.find { it.id == currentChatId }
                 }
             } catch (e: Exception) {
                 // handle

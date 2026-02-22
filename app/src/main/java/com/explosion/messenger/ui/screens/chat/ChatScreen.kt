@@ -273,9 +273,10 @@ fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, 
                     .background(BgSidebar),
                 contentAlignment = Alignment.Center
             ) {
-                if (otherMember?.avatar_path != null) {
+                val avatarUrl = if (chat.is_group) chat.avatar_path else otherMember?.avatar_path
+                if (avatarUrl != null) {
                     AsyncImage(
-                        model = "${com.explosion.messenger.util.Constants.AVATAR_URL}${otherMember.avatar_path}",
+                        model = "${com.explosion.messenger.util.Constants.AVATAR_URL}$avatarUrl",
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop

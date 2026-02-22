@@ -36,6 +36,10 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.io.FileOutputStream
+import com.explosion.messenger.ui.components.CircularCropperDialog
+import android.graphics.Bitmap
+import android.graphics.Bitmap.CompressFormat
+import okhttp3.RequestBody.Companion.toRequestBody
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,18 +61,32 @@ fun GroupSettingsDialog(
     var searchQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
 
+    var selectedUri by remember { mutableStateOf<Uri?>(null) }
+    var showCropper by remember { mutableStateOf(false) }
+
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
-            val file = File(context.cacheDir, "temp_avatar.jpg")
-            context.contentResolver.openInputStream(it)?.use { input ->
-                FileOutputStream(file).use { output ->
-                    input.copyTo(output)
-                }
-            }
-            val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-            val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
-            viewModel.updateChatAvatar(body)
+            selectedUri = it
+            showCropper = true
         }
+    }
+
+    if (showCropper && selectedUri != null) {
+        CircularCropperDialog(
+            uri = selectedUri!!,
+            onDismiss = { showCropper = false },
+            onCropped = { bitmap ->
+                showCropper = false
+                val file = File(context.cacheDir, "cropped_avatar.jpg")
+                val bos = java.io.ByteArrayOutputStream()
+                bitmap.compress(CompressFormat.JPEG, 90, bos)
+                val bitmapData = bos.toByteArray()
+                
+                val requestFile = bitmapData.toRequestBody("image/jpeg".toMediaTypeOrNull())
+                val body = MultipartBody.Part.createFormData("file", "avatar.jpg", requestFile)
+                viewModel.updateChatAvatar(body)
+            }
+        )
     }
 
     Dialog(

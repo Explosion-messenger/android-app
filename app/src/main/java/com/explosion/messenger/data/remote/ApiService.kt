@@ -92,7 +92,7 @@ interface ApiService {
     suspend fun removeMember(
         @Path("chat_id") chatId: Int,
         @Path("user_id") userId: Int
-    ): Response<StatusResponse>
+    ): Response<okhttp3.ResponseBody>
 
     @PATCH("chats/{chat_id}/members/{user_id}/admin")
     suspend fun updateMemberAdmin(
