@@ -352,7 +352,8 @@ fun MessageScreen(
                                 onRead = { viewModel.markAsRead(msg.id) },
                                 isGroup = currentChat?.is_group == true,
                                 currentUserId = currentUserId,
-                                members = currentChat?.members ?: emptyList()
+                                members = currentChat?.members ?: emptyList(),
+                                token = viewModel.currentToken
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
@@ -473,7 +474,8 @@ fun MessageItem(
     onRead: () -> Unit,
     isGroup: Boolean,
     currentUserId: Int,
-    members: List<com.explosion.messenger.data.remote.UserOut>
+    members: List<com.explosion.messenger.data.remote.UserOut>,
+    token: String = ""
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
 
@@ -589,7 +591,7 @@ fun MessageItem(
                     }
                     if (msg.file != null && msg.file.mime_type.startsWith("image/")) {
                         AsyncImage(
-                            model = "${Constants.BASE_URL}files/download/${msg.file.path}?token=${viewModel.currentToken}",
+                            model = "${Constants.BASE_URL}files/download/${msg.file.path}?token=${token}",
                             contentDescription = "Attached Image",
                             modifier = Modifier
                                 .fillMaxWidth()
