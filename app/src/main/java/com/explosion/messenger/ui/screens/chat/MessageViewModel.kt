@@ -32,6 +32,7 @@ class MessageViewModel @Inject constructor(
 ) : ViewModel() {
 
     val currentUserId = tokenManager.getUserId()
+    val currentToken = tokenManager.getToken() ?: ""
 
     private val _messages = MutableStateFlow<List<MessageDto>>(emptyList())
     val messages: StateFlow<List<MessageDto>> = _messages.asStateFlow()

@@ -589,7 +589,7 @@ fun MessageItem(
                     }
                     if (msg.file != null && msg.file.mime_type.startsWith("image/")) {
                         AsyncImage(
-                            model = "${Constants.BASE_URL.removeSuffix("/")}${msg.file.path}",
+                            model = "${Constants.BASE_URL}files/download/${msg.file.path}?token=${viewModel.currentToken}",
                             contentDescription = "Attached Image",
                             modifier = Modifier
                                 .fillMaxWidth()
