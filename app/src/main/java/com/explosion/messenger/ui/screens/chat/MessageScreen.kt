@@ -38,6 +38,11 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
 import kotlinx.coroutines.delay
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.asRequestBody
 
 @Composable
 fun DatePlaque(date: String) {
@@ -347,6 +352,28 @@ fun MessageScreen(
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val context = LocalContext.current
+                    val pickMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+                        if (uri != null) {
+                            val file = java.io.File(context.cacheDir, "upload_temp.jpg")
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                java.io.FileOutputStream(file).use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                            val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                            val body = okhttp3.MultipartBody.Part.createFormData("file", file.name, requestFile)
+                            viewModel.sendFile(body)
+                        }
+                    }
+
+                    IconButton(
+                        onClick = { pickMedia.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(androidx.compose.material.icons.Icons.Default.Add, contentDescription = "Add Attachment", tint = AccentBlue)
+                    }
+
                     OutlinedTextField(
                         value = textState,
                         onValueChange = { 
@@ -537,11 +564,25 @@ fun MessageItem(
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
                     }
-                    Text(
-                        text = msg.text ?: "",
-                        fontSize = 15.sp,
-                        color = Color.White
-                    )
+                    if (msg.file != null && msg.file.file_type.startsWith("image/")) {
+                        AsyncImage(
+                            model = "${Constants.BASE_URL.removeSuffix("/")}${msg.file.file_path}",
+                            contentDescription = "Attached Image",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 200.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .padding(bottom = if (msg.text.isNullOrBlank()) 0.dp else 8.dp),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    if (!msg.text.isNullOrBlank()) {
+                        Text(
+                            text = msg.text,
+                            fontSize = 15.sp,
+                            color = Color.White
+                        )
+                    }
                     
                     if (timeStr.isNotEmpty()) {
                         Row(
@@ -739,14 +780,19 @@ fun MessageStatusTicks(readCount: Int, isGroup: Boolean) {
             imageVector = Icons.Default.Check,
             contentDescription = "Sent",
             modifier = Modifier.size(16.dp),
-            tint = Color.White.copy(alpha = 0.5f)
+            tint = com.explosion.messenger.ui.theme.TextDim
         )
     } else {
+        val readColor = if (isGroup && readCount == 1) {
+            Color(0xFFB026FF) // Neon purple
+        } else {
+            Color(0xFF39FF14) // Neon green
+        }
         Icon(
             imageVector = Icons.Default.DoneAll,
             contentDescription = "Read",
             modifier = Modifier.size(16.dp),
-            tint = Color(0xFF3897F0) // Distinct blue tick
+            tint = readColor
         )
     }
 }

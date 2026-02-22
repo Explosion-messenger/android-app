@@ -36,6 +36,7 @@ import com.explosion.messenger.ui.theme.BgDark
 import com.explosion.messenger.ui.theme.TextWhite
 import java.io.InputStream
 import kotlin.math.max
+import kotlin.math.min
 
 @Composable
 fun CircularCropperDialog(
@@ -94,62 +95,79 @@ fun CropperContent(
     val imageWidth = imageBitmap.width.toFloat()
     val imageHeight = imageBitmap.height.toFloat()
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale *= zoom
-                    offset += pan
-                }
-            }
-    ) {
+    BoxWithConstraints {
         val containerWidth = constraints.maxWidth.toFloat()
         val containerHeight = constraints.maxHeight.toFloat()
         
         // Define crop area (circle)
-        val cropSize = max(containerWidth, containerHeight) * 0.7f
-        val cropRect = Rect(
-            offset = Offset((containerWidth - cropSize) / 2, (containerHeight - cropSize) / 2),
-            size = Size(cropSize, cropSize)
-        )
+        val cropSize = min(containerWidth, containerHeight) * 0.9f
+        
+        // Limits
+        val baseScale = max(cropSize / imageWidth, cropSize / imageHeight)
+        val minScale = 1f
+        val maxScale = 5f
 
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            // Draw image with transform
-            val baseScale = max(cropSize / imageWidth, cropSize / imageHeight)
-            val totalScale = baseScale * scale
-            
-            val scaledWidth = imageWidth * totalScale
-            val scaledHeight = imageHeight * totalScale
-            
-            val centerOffset = Offset(
-                (containerWidth - scaledWidth) / 2 + offset.x,
-                (containerHeight - scaledHeight) / 2 + offset.y
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale = (scale * zoom).coerceIn(minScale, maxScale)
+                        
+                        val totalScale = baseScale * scale
+                        val scaledWidth = imageWidth * totalScale
+                        val scaledHeight = imageHeight * totalScale
+
+                        val maxX = max(0f, (scaledWidth - containerWidth) / 2)
+                        val maxY = max(0f, (scaledHeight - containerHeight) / 2)
+
+                        val newX = (offset.x + pan.x).coerceIn(-maxX, maxX)
+                        val newY = (offset.y + pan.y).coerceIn(-maxY, maxY)
+
+                        offset = Offset(newX, newY)
+                    }
+                }
+        ) {
+            val cropRect = Rect(
+                offset = Offset((containerWidth - cropSize) / 2, (containerHeight - cropSize) / 2),
+                size = Size(cropSize, cropSize)
             )
 
-            drawImage(
-                image = imageBitmap,
-                dstOffset = IntOffset(centerOffset.x.toInt(), centerOffset.y.toInt()),
-                dstSize = IntSize(scaledWidth.toInt(), scaledHeight.toInt())
-            )
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                // Draw image with transform
+                val totalScale = baseScale * scale
+                
+                val scaledWidth = imageWidth * totalScale
+                val scaledHeight = imageHeight * totalScale
+                
+                val centerOffset = Offset(
+                    (containerWidth - scaledWidth) / 2 + offset.x,
+                    (containerHeight - scaledHeight) / 2 + offset.y
+                )
 
-            // Draw overlay mask
-            val path = Path().apply {
-                addRect(Rect(0f, 0f, containerWidth, containerHeight))
-                addOval(cropRect)
-                fillType = PathFillType.EvenOdd
+                drawImage(
+                    image = imageBitmap,
+                    dstOffset = IntOffset(centerOffset.x.toInt(), centerOffset.y.toInt()),
+                    dstSize = IntSize(scaledWidth.toInt(), scaledHeight.toInt())
+                )
+
+                // Draw overlay mask
+                val path = Path().apply {
+                    addRect(Rect(0f, 0f, containerWidth, containerHeight))
+                    addOval(cropRect)
+                    fillType = PathFillType.EvenOdd
+                }
+                drawPath(path, Color.Black.copy(alpha = 0.7f))
+                
+                // Draw circle border
+                drawCircle(
+                    color = AccentBlue,
+                    radius = cropSize / 2,
+                    center = cropRect.center,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                )
             }
-            drawPath(path, Color.Black.copy(alpha = 0.7f))
-            
-            // Draw circle border
-            drawCircle(
-                color = AccentBlue,
-                radius = cropSize / 2,
-                center = cropRect.center,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
-            )
-        }
 
         Button(
             onClick = {
@@ -171,8 +189,6 @@ fun CropperContent(
                 
                 canvas.drawBitmap(imageBitmap.asAndroidBitmap(), matrix, paint)
                 
-                // Apply circular mask to the bitmap result if needed (already handled by display)
-                // But for the file, we just want the square crop that contains the circle
                 onCropped(renderBitmap)
             },
             modifier = Modifier
@@ -183,4 +199,6 @@ fun CropperContent(
             Text("SET PROFILE PHOTO", fontWeight = FontWeight.Black)
         }
     }
+}
+
 }

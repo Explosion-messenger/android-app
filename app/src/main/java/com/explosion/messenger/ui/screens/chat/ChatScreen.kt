@@ -292,7 +292,7 @@ fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, 
             }
 
             // Status Dot (Non-clipping)
-            if (!chat.is_group && status != "offline") {
+            if (!chat.is_group && status != null && status != "offline") {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)

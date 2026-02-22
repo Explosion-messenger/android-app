@@ -193,6 +193,24 @@ class MessageViewModel @Inject constructor(
         }
     }
 
+    fun sendFile(body: okhttp3.MultipartBody.Part) {
+        if (currentChatId == -1) return
+        viewModelScope.launch {
+            try {
+                val uploadResponse = api.uploadFile(body)
+                if (uploadResponse.isSuccessful) {
+                    val fileOut = uploadResponse.body()
+                    if (fileOut != null) {
+                        val msgRequest = MessageCreateRequest(chat_id = currentChatId, file_id = fileOut.id)
+                        api.sendMessage(msgRequest)
+                    }
+                }
+            } catch (e: Exception) {
+                // handle
+            }
+        }
+    }
+
     fun deleteMessage(messageId: Int) {
         viewModelScope.launch {
             try {

@@ -53,6 +53,12 @@ interface ApiService {
     @POST("messages/send")
     suspend fun sendMessage(@Body request: MessageCreateRequest): Response<MessageDto>
 
+    @Multipart
+    @POST("files/upload")
+    suspend fun uploadFile(
+        @Part file: MultipartBody.Part
+    ): Response<FileOut>
+
     @DELETE("messages/{message_id}")
     suspend fun deleteMessage(@Path("message_id") messageId: Int): Response<Unit>
 
@@ -179,7 +185,16 @@ data class MessageDto(
     val sender: UserOut,
     val created_at: String,
     val read_by: List<MessageReadOutDto> = emptyList(),
-    val reactions: List<MessageReactionDto> = emptyList()
+    val reactions: List<MessageReactionDto> = emptyList(),
+    val file: FileOut? = null
+)
+
+@kotlinx.serialization.Serializable
+data class FileOut(
+    val id: Int,
+    val file_path: String,
+    val original_name: String,
+    val file_type: String
 )
 
 @kotlinx.serialization.Serializable
