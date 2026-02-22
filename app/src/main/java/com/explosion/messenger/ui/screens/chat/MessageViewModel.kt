@@ -48,7 +48,9 @@ class MessageViewModel @Inject constructor(
                         text = newMsg.text,
                         sender_id = newMsg.sender.id,
                         sender = newMsg.sender,
-                        created_at = "Just now"
+                        created_at = java.time.Instant.now().toString(),
+                        read_by = emptyList(),
+                        reactions = emptyList()
                     )
                     _messages.value = listOf(dto) + _messages.value
                 }
@@ -173,11 +175,15 @@ class MessageViewModel @Inject constructor(
     }
 
     fun markAsRead(messageId: Int) {
-        viewModelScope.launch {
-            try {
-                api.markMessageAsRead(messageId)
-            } catch (e: Exception) {
-                // handle
+        val msg = _messages.value.find { it.id == messageId }
+        // Optimization: only call if I am not in read_by
+        if (msg != null && msg.read_by.none { it.user_id == currentUserId }) {
+            viewModelScope.launch {
+                try {
+                    api.markMessageAsRead(messageId)
+                } catch (e: Exception) {
+                    // handle
+                }
             }
         }
     }

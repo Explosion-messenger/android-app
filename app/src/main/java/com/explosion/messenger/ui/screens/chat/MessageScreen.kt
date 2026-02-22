@@ -153,7 +153,10 @@ fun MessageScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     reverseLayout = true
                 ) {
-                    items(messages.size) { index ->
+                    items(
+                        count = messages.size,
+                        key = { index -> messages[index].id }
+                    ) { index ->
                         val msg = messages[index]
                         
                         // Simple Date Divider Logic: Check if day differs from the next message in list (because of reverseLayout, next is index+1)
@@ -187,7 +190,8 @@ fun MessageScreen(
                             onShowReactionPopup = { activeReactionMsgId = msg.id },
                             onCloseReactionPopup = { activeReactionMsgId = null },
                             onRead = { viewModel.markAsRead(msg.id) },
-                            isGroup = currentChat?.is_group == true
+                            isGroup = currentChat?.is_group == true,
+                            currentUserId = currentUserId
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -246,13 +250,14 @@ fun MessageItem(
     onShowReactionPopup: () -> Unit,
     onCloseReactionPopup: () -> Unit,
     onRead: () -> Unit,
-    isGroup: Boolean
+    isGroup: Boolean,
+    currentUserId: Int
 ) {
     var showContextMenu by remember { mutableStateOf(false) } // For Delete (Long Press)
 
     // Trigger read status when message is displayed
     LaunchedEffect(msg.id) {
-        if (!isMine) {
+        if (!isMine && msg.read_by.none { it.user_id == currentUserId }) {
             onRead()
         }
     }
