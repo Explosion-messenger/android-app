@@ -36,7 +36,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Tab
 import coil.compose.AsyncImage
 import com.explosion.messenger.data.remote.ChatDto
-import com.explosion.messenger.ui.theme.AccentGreen
+import com.explosion.messenger.ui.theme.AccentBlue
 import com.explosion.messenger.ui.theme.BgDark
 import com.explosion.messenger.ui.theme.BgSidebar
 import com.explosion.messenger.ui.theme.TextDim
@@ -70,7 +70,7 @@ fun ChatScreen(
                 },
                 actions = {
                     IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = AccentGreen)
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = AccentBlue)
                     }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.Default.ExitToApp, contentDescription = "Logout", tint = TextDim)
@@ -84,7 +84,7 @@ fun ChatScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showCreateDialog = true },
-                containerColor = AccentGreen,
+                containerColor = AccentBlue,
                 contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "New Chat")
@@ -94,7 +94,7 @@ fun ChatScreen(
     ) { padding ->
         if (loading && chats.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AccentGreen)
+                CircularProgressIndicator(color = AccentBlue)
             }
         }
         
@@ -141,7 +141,7 @@ fun CreateChatDialog(viewModel: ChatViewModel, onDismiss: () -> Unit, onChatCrea
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
                     containerColor = Color.Transparent,
-                    contentColor = AccentGreen
+                    contentColor = AccentBlue
                 ) {
                     tabs.forEachIndexed { index, title ->
                         Tab(
@@ -153,7 +153,7 @@ fun CreateChatDialog(viewModel: ChatViewModel, onDismiss: () -> Unit, onChatCrea
                                     selectedUsers = setOf(selectedUsers.first())
                                 }
                             },
-                            text = { Text(title, color = if (selectedTabIndex == index) AccentGreen else TextDim) }
+                            text = { Text(title, color = if (selectedTabIndex == index) AccentBlue else TextDim) }
                         )
                     }
                 }
@@ -177,7 +177,7 @@ fun CreateChatDialog(viewModel: ChatViewModel, onDismiss: () -> Unit, onChatCrea
                                 modifier = Modifier
                                     .padding(end = 4.dp)
                                     .clickable { selectedUsers = selectedUsers - u },
-                                colors = CardDefaults.cardColors(containerColor = AccentGreen)
+                                colors = CardDefaults.cardColors(containerColor = AccentBlue)
                             ) {
                                 Text(u.username, Modifier.padding(4.dp), color = Color.White, fontSize = 12.sp)
                             }
@@ -218,7 +218,7 @@ fun CreateChatDialog(viewModel: ChatViewModel, onDismiss: () -> Unit, onChatCrea
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(user.username, fontSize = 16.sp, fontWeight = if(isSelected) FontWeight.Black else FontWeight.Normal, color = if(isSelected) AccentGreen else Color.White)
+                            Text(user.username, fontSize = 16.sp, fontWeight = if(isSelected) FontWeight.Black else FontWeight.Normal, color = if(isSelected) AccentBlue else Color.White)
                         }
                     }
                 }
@@ -276,7 +276,7 @@ fun ChatItem(chat: ChatDto, currentUserId: Int, onChatClick: (Int) -> Unit) {
             } else {
                 Text(
                     text = (chat.name ?: otherMember?.username ?: "?").take(1).uppercase(),
-                    color = AccentGreen,
+                    color = AccentBlue,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
                 )

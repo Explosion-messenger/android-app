@@ -51,7 +51,7 @@ fun RegisterScreen(
                 .offset(x = (-100).dp, y = (-100).dp)
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(AccentGreen.copy(alpha = 0.1f), Color.Transparent)
+                        colors = listOf(AccentBlue.copy(alpha = 0.1f), Color.Transparent)
                     )
                 )
         )
@@ -74,7 +74,7 @@ fun RegisterScreen(
                 text = "SYSTEM REGISTRATION PROTOCOL",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = AccentGreen,
+                color = AccentBlue,
                 letterSpacing = 2.sp,
                 modifier = Modifier.padding(bottom = 48.dp)
             )
@@ -140,7 +140,7 @@ fun RegisterForm(
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = BorderColor,
-                focusedBorderColor = AccentGreen
+                focusedBorderColor = AccentBlue
             ),
             singleLine = true
         )
@@ -155,7 +155,7 @@ fun RegisterForm(
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = BorderColor,
-                focusedBorderColor = AccentGreen
+                focusedBorderColor = AccentBlue
             ),
             singleLine = true
         )
@@ -171,7 +171,7 @@ fun RegisterForm(
             visualTransformation = PasswordVisualTransformation(),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = BorderColor,
-                focusedBorderColor = AccentGreen
+                focusedBorderColor = AccentBlue
             ),
             singleLine = true
         )
@@ -184,7 +184,7 @@ fun RegisterForm(
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AccentGreen),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
             enabled = !isLoading
         ) {
             if (isLoading) {
@@ -267,7 +267,7 @@ fun Register2FAContent(
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = BgSidebar)
         ) {
-            Text("IMPORT INTO 2FA APP", color = AccentGreen, fontWeight = FontWeight.Black, fontSize = 10.sp, letterSpacing = 1.sp)
+            Text("IMPORT INTO 2FA APP", color = AccentBlue, fontWeight = FontWeight.Black, fontSize = 10.sp, letterSpacing = 1.sp)
         }
 
         Text(
@@ -286,7 +286,7 @@ fun Register2FAContent(
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = BorderColor,
-                focusedBorderColor = AccentGreen
+                focusedBorderColor = AccentBlue
             ),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
@@ -304,7 +304,7 @@ fun Register2FAContent(
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AccentGreen),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
             enabled = !isLoading
         ) {
             Text("FINALIZE REGISTRATION", fontWeight = FontWeight.Black, letterSpacing = 2.sp)

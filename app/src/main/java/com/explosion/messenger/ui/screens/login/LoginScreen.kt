@@ -45,7 +45,7 @@ fun LoginScreen(
                 .offset(x = 200.dp, y = (-100).dp)
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(AccentGreen.copy(alpha = 0.1f), Color.Transparent)
+                        colors = listOf(AccentBlue.copy(alpha = 0.1f), Color.Transparent)
                     )
                 )
         )
@@ -68,7 +68,7 @@ fun LoginScreen(
                 text = "AUTHENTICATION REQUIRED",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = AccentGreen,
+                color = AccentBlue,
                 letterSpacing = 2.sp,
                 modifier = Modifier.padding(bottom = 48.dp)
             )
@@ -135,7 +135,7 @@ fun LoginForm(
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = BorderColor,
-                focusedBorderColor = AccentGreen
+                focusedBorderColor = AccentBlue
             ),
             singleLine = true
         )
@@ -152,7 +152,7 @@ fun LoginForm(
                 visualTransformation = PasswordVisualTransformation(),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = BorderColor,
-                    focusedBorderColor = AccentGreen
+                    focusedBorderColor = AccentBlue
                 ),
                 singleLine = true
             )
@@ -166,7 +166,7 @@ fun LoginForm(
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AccentGreen),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
             enabled = !isLoading
         ) {
             if (isLoading) {
@@ -196,7 +196,7 @@ fun LoginForm(
             Text(
                 text = "SYSTEM ACCESS NOT GRANTED? CREATE ACCOUNT",
                 fontSize = 10.sp,
-                color = AccentGreen,
+                color = AccentBlue,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
@@ -230,7 +230,7 @@ fun TwoFAContent(
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = BorderColor,
-                focusedBorderColor = AccentGreen
+                focusedBorderColor = AccentBlue
             ),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
@@ -248,7 +248,7 @@ fun TwoFAContent(
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AccentGreen),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
             enabled = !isLoading
         ) {
             Text("VERIFY IDENTITY", fontWeight = FontWeight.Black, letterSpacing = 2.sp)

@@ -22,10 +22,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.explosion.messenger.data.remote.MessageDto
-import com.explosion.messenger.ui.theme.AccentGreen
+import com.explosion.messenger.ui.theme.AccentBlue
 import com.explosion.messenger.ui.theme.BgDark
 import com.explosion.messenger.ui.theme.BgSidebar
 import com.explosion.messenger.ui.theme.TextDim
+import com.explosion.messenger.ui.theme.TextWhite
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -114,7 +115,7 @@ fun MessageScreen(
                 actions = {
                     if (currentChat?.is_group == true) {
                         IconButton(onClick = { showEditGroupDialog = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit Group", tint = AccentGreen)
+                            Icon(Icons.Default.Edit, contentDescription = "Edit Group", tint = AccentBlue)
                         }
                     }
                 },
@@ -164,7 +165,7 @@ fun MessageScreen(
                 }
                 if (loading && messages.isEmpty()) {
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = AccentGreen)
+                        CircularProgressIndicator(color = AccentBlue)
                     }
                 } else {
                     LazyColumn(
@@ -239,7 +240,7 @@ fun MessageScreen(
                         shape = RoundedCornerShape(24.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = AccentGreen,
+                            focusedBorderColor = AccentBlue,
                             unfocusedContainerColor = BgDark,
                             focusedContainerColor = BgDark
                         )
@@ -251,7 +252,7 @@ fun MessageScreen(
                             textState = ""
                         },
                         modifier = Modifier
-                            .background(AccentGreen, RoundedCornerShape(24.dp))
+                            .background(AccentBlue, RoundedCornerShape(24.dp))
                             .size(48.dp)
                     ) {
                         Icon(Icons.Default.Send, contentDescription = "Send", tint = Color.White)
@@ -268,7 +269,7 @@ fun MessageScreen(
                         }
                     },
                     containerColor = BgSidebar,
-                    contentColor = AccentGreen,
+                    contentColor = AccentBlue,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(bottom = 96.dp, end = 16.dp)
@@ -353,7 +354,7 @@ fun MessageItem(
             Column(
                 modifier = Modifier
                     .background(
-                        color = if (isMine) AccentGreen else BgSidebar,
+                        color = if (isMine) AccentBlue else BgSidebar,
                         shape = RoundedCornerShape(16.dp, 16.dp, if (isMine) 4.dp else 16.dp, if (isMine) 16.dp else 4.dp)
                     )
                     .pointerInput(Unit) {
@@ -369,7 +370,7 @@ fun MessageItem(
                     Text(
                         text = msg.sender.username,
                         fontSize = 12.sp,
-                        color = AccentGreen,
+                        color = AccentBlue,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
@@ -515,13 +516,16 @@ fun MessageStatusTicks(readCount: Int, isGroup: Boolean) {
             imageVector = Icons.Default.Check,
             contentDescription = "Sent",
             modifier = Modifier.size(14.dp),
-            tint = Color.White.copy(alpha = 0.5f)
+            tint = TextWhite.copy(alpha = 0.5f)
         )
     } else {
         val color = if (isGroup) {
-            if (readCount == 1) Color(0xFFBF97FF) else Color(0xFF22C55E)
+            // For groups, maybe purple for "some read" and blue for "all read"? 
+            // Web usually just uses the accent color for any read.
+            // Let's use AccentBlue for all read cases for simplicity and parity.
+            AccentBlue
         } else {
-            Color(0xFF22C55E)
+            AccentBlue
         }
         Icon(
             imageVector = Icons.Default.DoneAll,

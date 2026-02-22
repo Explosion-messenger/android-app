@@ -24,7 +24,7 @@ import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
 import coil.compose.AsyncImage
-import com.explosion.messenger.ui.theme.AccentGreen
+import com.explosion.messenger.ui.theme.AccentBlue
 import com.explosion.messenger.ui.theme.BgDark
 import com.explosion.messenger.ui.theme.BgSidebar
 import com.explosion.messenger.ui.theme.TextDim
@@ -101,7 +101,7 @@ fun SettingsScreen(
                 } else {
                     Text(
                         text = (user?.username ?: "?").take(1).uppercase(),
-                        color = AccentGreen,
+                        color = AccentBlue,
                         fontWeight = FontWeight.Bold,
                         fontSize = 40.sp
                     )
@@ -112,7 +112,7 @@ fun SettingsScreen(
 
             Button(
                 onClick = { pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                colors = ButtonDefaults.buttonColors(containerColor = AccentGreen)
+                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
             ) {
                 Text("CHANGE AVATAR", color = Color.White, fontWeight = FontWeight.Bold)
             }
