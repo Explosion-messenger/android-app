@@ -104,7 +104,7 @@ fun MessageScreen(
     LaunchedEffect(textState) {
         if (textState.isNotEmpty()) {
             viewModel.sendTypingStatus(true)
-            kotlinx.coroutines.delay(4000) // Backend timeout is usually around 5s
+            kotlinx.coroutines.delay(3000) // Slightly shorter debounce
             viewModel.sendTypingStatus(false)
         } else {
             viewModel.sendTypingStatus(false)
@@ -366,8 +366,11 @@ fun MessageScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(
                         onClick = {
-                            viewModel.sendMessage(textState)
-                            textState = ""
+                            if (textState.isNotBlank()) {
+                                viewModel.sendMessage(textState)
+                                viewModel.sendTypingStatus(false) // Immediate clear
+                                textState = ""
+                            }
                         },
                         modifier = Modifier
                             .background(AccentBlue, RoundedCornerShape(24.dp))

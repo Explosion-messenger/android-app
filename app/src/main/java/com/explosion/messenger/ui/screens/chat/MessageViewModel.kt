@@ -155,7 +155,8 @@ class MessageViewModel @Inject constructor(
                 // Fetch Messages
                 val response = api.getMessages(chatId)
                 if (response.isSuccessful) {
-                    _messages.value = response.body() ?: emptyList()
+                    // Reverse because UI uses reverseLayout=true (index 0 is bottom)
+                    _messages.value = (response.body() ?: emptyList()).reversed()
                     // After loading messages, mark the whole chat as read
                     markChatAsRead(chatId)
                 }

@@ -330,9 +330,17 @@ fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, 
             }
 
             val typingText = when {
-                typingUsers.isNullOrEmpty() -> chat.last_message?.text ?: "No messages yet"
-                typingUsers.size == 1 -> "${typingUsers[0]} is typing${typingDots.value}"
-                else -> "${typingUsers.size} users are typing${typingDots.value}"
+                !typingUsers.isNullOrEmpty() -> {
+                    if (typingUsers.size == 1) "${typingUsers[0]} is typing${typingDots.value}"
+                    else "${typingUsers.size} users are typing${typingDots.value}"
+                }
+                chat.last_message != null -> {
+                    val prefix = if (chat.last_message.sender_id == currentUserId) "You: " 
+                                else if (chat.is_group) "${chat.last_message.sender.username}: " 
+                                else ""
+                    "$prefix${chat.last_message.text}"
+                }
+                else -> "No messages yet"
             }
             Text(
                 text = typingText,
