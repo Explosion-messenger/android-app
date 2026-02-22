@@ -185,12 +185,26 @@ fun MessageScreen(
                                 AnimatedTypingText(typingUsers)
                             } else {
                                 if (currentChat?.is_group != true && otherUser != null) {
-                                    val isOnline = userStatuses.containsKey(otherUser.id)
-                                    Text(
-                                        text = if (isOnline) "online" else "offline",
-                                        fontSize = 11.sp,
-                                        color = if (isOnline) Color.Green else TextDim
-                                    )
+                                    val status = userStatuses[otherUser.id]
+                                    val statusText = status ?: "offline"
+                                    val color = when(statusText) {
+                                        "online" -> Color.Green
+                                        "away" -> com.explosion.messenger.ui.theme.AwayYellow
+                                        else -> TextDim
+                                    }
+                                    if (statusText != "offline") {
+                                        Text(
+                                            text = statusText,
+                                            fontSize = 11.sp,
+                                            color = color
+                                        )
+                                    } else {
+                                        Text(
+                                            text = statusText,
+                                            fontSize = 11.sp,
+                                            color = TextDim
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -364,6 +378,9 @@ fun MessageScreen(
                             val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
                             val body = okhttp3.MultipartBody.Part.createFormData("file", file.name, requestFile)
                             viewModel.sendFile(body)
+                            scope.launch {
+                                listState.animateScrollToItem(0)
+                            }
                         }
                     }
 
@@ -399,6 +416,9 @@ fun MessageScreen(
                                 viewModel.sendMessage(textState)
                                 viewModel.sendTypingStatus(false)
                                 textState = ""
+                                scope.launch {
+                                    listState.animateScrollToItem(0)
+                                }
                             }
                         },
                         modifier = Modifier
@@ -465,7 +485,7 @@ fun MessageItem(
             .fillMaxWidth()
             .padding(vertical = 4.dp, horizontal = 12.dp),
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Bottom
     ) {
         // Selection Checkmark (Left side)
         if (selectionMode) {
@@ -618,7 +638,10 @@ fun MessageItem(
                         Card(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = BgSidebar),
-                            modifier = Modifier.padding(end = 4.dp).border(1.dp, BgDark, RoundedCornerShape(12.dp))
+                            modifier = Modifier
+                                .padding(end = 4.dp)
+                                .border(1.dp, BgDark, RoundedCornerShape(12.dp))
+                                .clickable { onReact(emoji) }
                         ) {
                             Text(
                                 text = "$emoji $count",
@@ -674,8 +697,7 @@ fun ReactionMenuPopup(
     currentUserId: Int
 ) {
     var isExpanded by remember { mutableStateOf(false) }
-    val primary = listOf("❤️", "🤝", "👍", "👌", "🍌", "🐳")
-    val extend = listOf("👎", "🖕", "🍾", "🤔", "🥰", "👏", "😁", "🤯", "🤬", "😔", "🎉", "🤩", "🤮", "💩", "🙏", "🕊️", "🤡", "🥱", "🥴", "😍")
+    val emojis = listOf("👍", "❤️", "😂", "😮", "😢", "🔥", "🍌", "🐳")
 
     Popup(
         onDismissRequest = onDismiss,
@@ -694,21 +716,13 @@ fun ReactionMenuPopup(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    val visibleEmojis = if (isExpanded) (primary + extend) else primary
-                    visibleEmojis.forEach { emoji ->
+                    emojis.forEach { emoji ->
                         Text(
                             text = emoji,
                             fontSize = 28.sp,
                             modifier = Modifier
                                 .clickable { onReact(emoji) }
                                 .padding(8.dp)
-                        )
-                    }
-                    IconButton(onClick = { isExpanded = !isExpanded }) {
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = if (isExpanded) "Collapse" else "Expand",
-                            tint = TextDim
                         )
                     }
                 }

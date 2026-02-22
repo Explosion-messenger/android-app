@@ -179,7 +179,8 @@ fun GroupSettingsDialog(
                             onValueChange = { editNameState = it },
                             enabled = isAdmin,
                             placeholder = { Text("GROUP NAME", color = TextDim.copy(alpha = 0.5f)) },
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
                             textStyle = MaterialTheme.typography.bodyLarge.copy(
                                 textAlign = TextAlign.Center,
                                 fontWeight = FontWeight.Bold,

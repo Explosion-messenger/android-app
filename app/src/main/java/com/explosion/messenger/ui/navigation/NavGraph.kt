@@ -81,7 +81,14 @@ fun NavGraph(tokenManager: TokenManager) {
             val viewModel: SettingsViewModel = hiltViewModel()
             SettingsScreen(
                 viewModel = viewModel,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onLogout = {
+                    navController.context.stopService(android.content.Intent(navController.context, com.explosion.messenger.services.NeuralLinkService::class.java))
+                    tokenManager.clearToken()
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
         composable(
