@@ -12,6 +12,8 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -98,14 +100,27 @@ fun MessageScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    val fallbackName = currentChat?.members?.firstOrNull { it.id != currentUserId }?.username ?: "CHAT"
-                    val displayTitle = currentChat?.name ?: fallbackName
-                    Text(
-                        displayTitle.uppercase(),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
+                    val userStatuses by viewModel.userStatuses.collectAsState()
+                    val otherMember = currentChat?.members?.firstOrNull { it.id != currentUserId }
+                    val status = if (currentChat?.is_group == true) null else otherMember?.id?.let { userStatuses[it] } ?: "offline"
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            (currentChat?.name ?: otherMember?.username ?: "CHAT").uppercase(),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp
+                        )
+                        if (status != null && status != "offline") {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(if (status == "online") Color(0xFF22C55E) else com.explosion.messenger.ui.theme.AwayYellow)
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

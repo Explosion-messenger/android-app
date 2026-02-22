@@ -47,6 +47,13 @@ data class ReadReceiptData(
     val read_at: String
 )
 
+@Serializable
+data class UserStatusData(
+    val user_id: Int,
+    val status: String,
+    val online: Boolean
+)
+
 @Singleton
 class NeuralWebSocketManager @Inject constructor(
     private val client: OkHttpClient,
@@ -65,6 +72,12 @@ class NeuralWebSocketManager @Inject constructor(
 
     private val _readReceipts = MutableSharedFlow<ReadReceiptData>()
     val readReceipts: SharedFlow<ReadReceiptData> = _readReceipts
+
+    private val _userStatuses = MutableSharedFlow<UserStatusData>()
+    val userStatuses: SharedFlow<UserStatusData> = _userStatuses
+
+    private val _onlineList = MutableSharedFlow<Map<Int, String>>()
+    val onlineList: SharedFlow<Map<Int, String>> = _onlineList
 
     fun connect() {
         val token = tokenManager.getToken() ?: return
@@ -100,6 +113,16 @@ class NeuralWebSocketManager @Inject constructor(
                         val readData = json.decodeFromJsonElement<ReadReceiptData>(wsMsg.data!!)
                         scope.launch {
                             _readReceipts.emit(readData)
+                        }
+                    } else if (wsMsg.type == "user_status") {
+                        val statusData = json.decodeFromJsonElement<UserStatusData>(wsMsg.data!!)
+                        scope.launch {
+                            _userStatuses.emit(statusData)
+                        }
+                    } else if (wsMsg.type == "online_list") {
+                        val listData = json.decodeFromJsonElement<Map<Int, String>>(wsMsg.data!!)
+                        scope.launch {
+                            _onlineList.emit(listData)
                         }
                     }
                 } catch (e: Exception) {

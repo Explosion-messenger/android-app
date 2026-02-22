@@ -19,12 +19,36 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
+import com.explosion.messenger.data.remote.NeuralWebSocketManager
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val api: ApiService,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val wsManager: com.explosion.messenger.data.remote.NeuralWebSocketManager
 ) : ViewModel() {
+
+    private val _userStatuses = MutableStateFlow<Map<Int, String>>(emptyMap())
+    val userStatuses: StateFlow<Map<Int, String>> = _userStatuses
+
+    init {
+        viewModelScope.launch {
+            wsManager.onlineList.collect { list ->
+                _userStatuses.value = list
+            }
+        }
+        viewModelScope.launch {
+            wsManager.userStatuses.collect { update ->
+                val current = _userStatuses.value.toMutableMap()
+                if (update.status == "offline") {
+                    current.remove(update.user_id)
+                } else {
+                    current[update.user_id] = update.status
+                }
+                _userStatuses.value = current
+            }
+        }
+    }
 
     private val _chats = MutableStateFlow<List<ChatDto>>(emptyList())
     val chats: StateFlow<List<ChatDto>> = _chats

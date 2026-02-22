@@ -109,13 +109,15 @@ fun ChatScreen(
             )
         }
 
+        val userStatuses by viewModel.userStatuses.collectAsState()
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
             items(chats) { chat ->
-                ChatItem(chat, viewModel.currentUserId, onChatClick)
+                ChatItem(chat, viewModel.currentUserId, userStatuses, onChatClick)
             }
         }
     }
@@ -249,8 +251,9 @@ fun CreateChatDialog(viewModel: ChatViewModel, onDismiss: () -> Unit, onChatCrea
 }
 
 @Composable
-fun ChatItem(chat: ChatDto, currentUserId: Int, onChatClick: (Int) -> Unit) {
+fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, onChatClick: (Int) -> Unit) {
     val otherMember = chat.members.firstOrNull { it.id != currentUserId } ?: chat.members.firstOrNull()
+    val status = if (chat.is_group) null else otherMember?.id?.let { userStatuses[it] } ?: "offline"
 
     Row(
         modifier = Modifier
@@ -279,6 +282,22 @@ fun ChatItem(chat: ChatDto, currentUserId: Int, onChatClick: (Int) -> Unit) {
                     color = AccentBlue,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
+                )
+            }
+
+            // Status Dot
+            if (!chat.is_group && status != "offline") {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(2.dp)
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(if (status == "online") Color(0xFF22C55E) else com.explosion.messenger.ui.theme.AwayYellow)
+                        .background(BgSidebar, CircleShape) // inner padding effect
+                        .padding(1.5.dp)
+                        .clip(CircleShape)
+                        .background(if (status == "online") Color(0xFF22C55E) else com.explosion.messenger.ui.theme.AwayYellow)
                 )
             }
         }

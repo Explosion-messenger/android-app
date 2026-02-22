@@ -37,6 +37,9 @@ class MessageViewModel @Inject constructor(
     private val _currentChat = MutableStateFlow<ChatDto?>(null)
     val currentChat: StateFlow<ChatDto?> = _currentChat.asStateFlow()
 
+    private val _userStatuses = MutableStateFlow<Map<Int, String>>(emptyMap())
+    val userStatuses: StateFlow<Map<Int, String>> = _userStatuses
+
     private var currentChatId: Int = -1
 
     init {
@@ -107,6 +110,24 @@ class MessageViewModel @Inject constructor(
                         } else msg
                     }
                 }
+            }
+        }
+
+        // Collect status updates
+        viewModelScope.launch {
+            webSocketManager.onlineList.collect { list ->
+                _userStatuses.value = list
+            }
+        }
+        viewModelScope.launch {
+            webSocketManager.userStatuses.collect { update ->
+                val current = _userStatuses.value.toMutableMap()
+                if (update.status == "offline") {
+                    current.remove(update.user_id)
+                } else {
+                    current[update.user_id] = update.status
+                }
+                _userStatuses.value = current
             }
         }
     }
