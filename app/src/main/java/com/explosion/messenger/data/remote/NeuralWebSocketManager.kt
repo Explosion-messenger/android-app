@@ -130,7 +130,7 @@ class NeuralWebSocketManager @Inject constructor(
                         val statusData = json.decodeFromJsonElement<UserStatusData>(wsMsg.data!!)
                         scope.launch {
                             val current = _onlineStatusMap.value.toMutableMap()
-                            if (statusData.status == "offline") {
+                            if (!statusData.online || statusData.status == "offline") {
                                 current.remove(statusData.user_id)
                             } else {
                                 current[statusData.user_id] = statusData.status

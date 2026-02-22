@@ -29,12 +29,38 @@ import androidx.compose.ui.window.Popup
 import coil.compose.AsyncImage
 import com.explosion.messenger.data.remote.MessageDto
 import com.explosion.messenger.data.remote.MessageReadOutDto
+import com.explosion.messenger.data.remote.UserOut
 import com.explosion.messenger.ui.theme.*
 import com.explosion.messenger.util.Constants
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
+
+import kotlinx.coroutines.delay
+
+@Composable
+fun AnimatedTypingText(names: List<String>) {
+    var dots by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        while (true) {
+            dots = when (dots) {
+                "" -> "."
+                "." -> ".."
+                ".." -> "..."
+                else -> ""
+            }
+            delay(500)
+        }
+    }
+    val text = if (names.size == 1) "${names[0]} is typing$dots" else "Multiple people typing$dots"
+    Text(
+        text = text,
+        fontSize = 13.sp,
+        color = Color.Green,
+        fontWeight = FontWeight.Bold
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,30 +107,60 @@ fun MessageScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = if (currentChat?.is_group == true) currentChat?.name ?: "Group Chat" else currentChat?.members?.find { it.id != currentUserId }?.username ?: "Chat",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextWhite
-                        )
-                        if (typingUsers.isNotEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        val otherUser = if (currentChat?.is_group != true) currentChat?.members?.find { it.id != currentUserId } else null
+                        val chatAvatar = if (currentChat?.is_group == true) currentChat?.avatar_path else otherUser?.avatar_path
+                        val chatNameInitial = if (currentChat?.is_group == true) currentChat?.name?.take(1) else otherUser?.username?.take(1)
+
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(BgSidebar),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (chatAvatar != null) {
+                                AsyncImage(
+                                    model = "${Constants.AVATAR_URL}$chatAvatar",
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text(
+                                    text = (chatNameInitial ?: "?").uppercase(),
+                                    color = AccentBlue,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = if (typingUsers.size == 1) "${typingUsers.first()} is typing..." else "Multiple people typing...",
-                                fontSize = 12.sp,
-                                color = AccentBlue
+                                text = if (currentChat?.is_group == true) currentChat?.name ?: "Group Chat" else otherUser?.username ?: "Chat",
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextWhite
                             )
-                        } else {
-                            val otherUser = currentChat?.members?.find { it.id != currentUserId }
-                            if (currentChat?.is_group != true && otherUser != null) {
-                            val isOnline = userStatuses.containsKey(otherUser.id)
-                            Text(
-                                text = if (isOnline) "online" else "offline",
-                                fontSize = 12.sp,
-                                color = if (isOnline) Color.Green else TextDim
-                            )
+                            if (typingUsers.isNotEmpty()) {
+                                AnimatedTypingText(typingUsers)
+                            } else {
+                                if (currentChat?.is_group != true && otherUser != null) {
+                                    val isOnline = userStatuses.containsKey(otherUser.id)
+                                    Text(
+                                        text = if (isOnline) "online" else "offline",
+                                        fontSize = 11.sp,
+                                        color = if (isOnline) Color.Green else TextDim
+                                    )
+                                }
                             }
                         }
                     }
@@ -128,7 +184,7 @@ fun MessageScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = BgDark
                 )
             )
@@ -583,8 +639,8 @@ fun ReactionMenuPopup(
             colors = CardDefaults.cardColors(containerColor = BgDark),
             modifier = Modifier
                 .padding(bottom = 8.dp)
-                .border(1.dp, BgSidebar, RoundedCornerShape(24.dp)),
-            elevation = CardDefaults.cardElevation(8.dp)
+                .border(1.dp, AccentBlue, RoundedCornerShape(24.dp)),
+            elevation = CardDefaults.cardElevation(12.dp)
         ) {
             Column(modifier = Modifier.padding(12.dp).animateContentSize().widthIn(min = 200.dp, max = 280.dp)) {
                 FlowRow(
@@ -612,48 +668,55 @@ fun ReactionMenuPopup(
 
                 Divider(color = BgSidebar, modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
 
-                Text(
-                    text = "Message info",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhite,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = BgSidebar.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth().border(0.5.dp, BgSidebar, RoundedCornerShape(12.dp))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Message info",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AccentBlue,
+                        )
 
-                if (!isGroup) {
-                    val sentZDT = try { ZonedDateTime.parse(sentAt) } catch(e:Exception){ null }
-                    val sentTimeStr = sentZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("dd MMM, HH:mm")) ?: ""
-                    
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "SENT", fontSize = 10.sp, color = TextDim, modifier = Modifier.width(40.dp))
-                            Text(text = sentTimeStr, fontSize = 12.sp, color = TextWhite)
-                        }
-                        
-                        val recipientRead = readBy.find { it.user_id != currentUserId }
-                        recipientRead?.let { read ->
-                            val readZDT = try { ZonedDateTime.parse(read.read_at) } catch(e:Exception){ null }
-                            val readTimeStr = readZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("dd MMM, HH:mm")) ?: ""
+                        if (!isGroup) {
+                            val sentZDT = try { ZonedDateTime.parse(sentAt) } catch(e:Exception){ null }
+                            val sentTimeStr = sentZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("dd MMM, HH:mm")) ?: ""
                             
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(text = "READ", fontSize = 10.sp, color = TextDim, modifier = Modifier.width(40.dp))
-                                Text(text = readTimeStr, fontSize = 12.sp, color = TextWhite)
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "SENT", fontSize = 10.sp, color = TextDim, modifier = Modifier.width(45.dp))
+                                    Text(text = sentTimeStr, fontSize = 12.sp, color = TextWhite)
+                                }
+                                
+                                val recipientRead = readBy.find { it.user_id != currentUserId }
+                                recipientRead?.let { read ->
+                                    val readZDT = try { ZonedDateTime.parse(read.read_at) } catch(e:Exception){ null }
+                                    val readTimeStr = readZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("dd MMM, HH:mm")) ?: ""
+                                    
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(text = "READ", fontSize = 10.sp, color = TextDim, modifier = Modifier.width(45.dp))
+                                        Text(text = readTimeStr, fontSize = 12.sp, color = TextWhite)
+                                    }
+                                }
                             }
-                        }
-                    }
-                } else {
-                    if (readBy.isEmpty()) {
-                        Text(text = "No one has read this yet", fontSize = 11.sp, color = TextDim)
-                    } else {
-                        readBy.forEach { read ->
-                            val user = members.find { it.id == read.user_id }
-                            val userName = user?.username ?: "User #${read.user_id}"
-                            val readZDT = try { ZonedDateTime.parse(read.read_at) } catch(e:Exception){ null }
-                            val timeStr = readZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: ""
-                            
-                            Row(modifier = Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(text = userName, fontSize = 12.sp, color = TextWhite, modifier = Modifier.weight(1f))
-                                Text(text = timeStr, fontSize = 10.sp, color = TextDim)
+                        } else {
+                            if (readBy.isEmpty()) {
+                                Text(text = "No one has read this yet", fontSize = 11.sp, color = TextDim)
+                            } else {
+                                readBy.forEach { read ->
+                                    val user = members.find { it.id == read.user_id }
+                                    val userName = user?.username ?: "User #${read.user_id}"
+                                    val readZDT = try { ZonedDateTime.parse(read.read_at) } catch(e:Exception){ null }
+                                    val timeStr = readZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: ""
+                                    
+                                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(text = userName, fontSize = 12.sp, color = TextWhite, modifier = Modifier.weight(1f))
+                                        Text(text = timeStr, fontSize = 10.sp, color = TextDim)
+                                    }
+                                }
                             }
                         }
                     }

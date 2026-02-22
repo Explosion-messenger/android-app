@@ -131,6 +131,7 @@ data class ChatDto(
     val name: String? = null,
     val is_group: Boolean,
     val last_message: MessageDto? = null,
+    val avatar_path: String? = null,
     val members: List<UserOut>
 )
 
