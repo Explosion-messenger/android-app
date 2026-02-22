@@ -13,6 +13,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -182,7 +185,9 @@ fun MessageScreen(
                             timeStr = currentZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "",
                             showReactionPopup = activeReactionMsgId == msg.id,
                             onShowReactionPopup = { activeReactionMsgId = msg.id },
-                            onCloseReactionPopup = { activeReactionMsgId = null }
+                            onCloseReactionPopup = { activeReactionMsgId = null },
+                            onRead = { viewModel.markAsRead(msg.id) },
+                            isGroup = currentChat?.is_group == true
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -239,9 +244,18 @@ fun MessageItem(
     timeStr: String,
     showReactionPopup: Boolean,
     onShowReactionPopup: () -> Unit,
-    onCloseReactionPopup: () -> Unit
+    onCloseReactionPopup: () -> Unit,
+    onRead: () -> Unit,
+    isGroup: Boolean
 ) {
     var showContextMenu by remember { mutableStateOf(false) } // For Delete (Long Press)
+
+    // Trigger read status when message is displayed
+    LaunchedEffect(msg.id) {
+        if (!isMine) {
+            onRead()
+        }
+    }
 
     if (showContextMenu) {
         AlertDialog(
@@ -317,13 +331,25 @@ fun MessageItem(
                 )
                 
                 if (timeStr.isNotEmpty()) {
-                    Text(
-                        text = timeStr,
-                        fontSize = 10.sp,
-                        color = if (isMine) Color.White.copy(alpha = 0.7f) else TextDim,
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.padding(top = 4.dp).align(Alignment.End)
-                    )
+                    Row(
+                        modifier = Modifier.padding(top = 4.dp).align(Alignment.End),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Text(
+                            text = timeStr,
+                            fontSize = 10.sp,
+                            color = if (isMine) Color.White.copy(alpha = 0.7f) else TextDim,
+                            textAlign = TextAlign.End
+                        )
+                        if (isMine) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            MessageStatusTicks(
+                                readCount = msg.read_by.size,
+                                isGroup = isGroup
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -429,5 +455,29 @@ fun ReactionMenuPopup(onReact: (String) -> Unit, onDismiss: () -> Unit, readBy: 
                 }
             }
         }
+    }
+}
+
+@Composable
+fun MessageStatusTicks(readCount: Int, isGroup: Boolean) {
+    if (readCount == 0) {
+        Icon(
+            imageVector = Icons.Default.Check,
+            contentDescription = "Sent",
+            modifier = Modifier.size(14.dp),
+            tint = Color.White.copy(alpha = 0.5f)
+        )
+    } else {
+        val color = if (isGroup) {
+            if (readCount == 1) Color(0xFFBF97FF) else Color(0xFF22C55E)
+        } else {
+            Color(0xFF22C55E)
+        }
+        Icon(
+            imageVector = Icons.Default.DoneAll,
+            contentDescription = "Read",
+            modifier = Modifier.size(14.dp),
+            tint = color
+        )
     }
 }

@@ -62,6 +62,12 @@ interface ApiService {
         @Body request: ReactionToggle
     ): Response<MessageDto> // Assume it returns MessageOut from backend
 
+    @POST("messages/{message_id}/read")
+    suspend fun markMessageAsRead(@Path("message_id") messageId: Int): Response<Unit>
+
+    @POST("chats/{chat_id}/read")
+    suspend fun markChatAsRead(@Path("chat_id") chatId: Int): Response<Unit>
+
     @Multipart
     @POST("me/avatar")
     suspend fun uploadUserAvatar(@Part file: MultipartBody.Part): Response<UserOut>

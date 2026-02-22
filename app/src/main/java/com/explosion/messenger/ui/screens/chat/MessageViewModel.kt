@@ -100,6 +100,8 @@ class MessageViewModel @Inject constructor(
                 val response = api.getMessages(chatId)
                 if (response.isSuccessful) {
                     _messages.value = response.body()?.reversed() ?: emptyList()
+                    // After loading messages, mark the whole chat as read
+                    markChatAsRead(chatId)
                 }
             } catch (e: Exception) {
                 // handle
@@ -164,6 +166,26 @@ class MessageViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     _currentChat.value = response.body()
                 }
+            } catch (e: Exception) {
+                // handle
+            }
+        }
+    }
+
+    fun markAsRead(messageId: Int) {
+        viewModelScope.launch {
+            try {
+                api.markMessageAsRead(messageId)
+            } catch (e: Exception) {
+                // handle
+            }
+        }
+    }
+
+    fun markChatAsRead(chatId: Int) {
+        viewModelScope.launch {
+            try {
+                api.markChatAsRead(chatId)
             } catch (e: Exception) {
                 // handle
             }
