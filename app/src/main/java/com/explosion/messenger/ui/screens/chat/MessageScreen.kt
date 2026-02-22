@@ -73,6 +73,7 @@ fun MessageScreen(
     val typingUsers by viewModel.typingUsers.collectAsState()
     val selectedIds by viewModel.selectedMessageIds.collectAsState()
     var showEditGroupDialog by remember { mutableStateOf(false) }
+    var showBulkDeleteConfirm by remember { mutableStateOf(false) }
     var activeReactionMsgId by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -236,13 +237,13 @@ fun MessageScreen(
                 },
                 actions = {
                     if (selectedIds.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.clearSelection() }) {
-                            Icon(Icons.Default.Close, contentDescription = "Cancel selection", tint = TextDim)
-                        }
-                        IconButton(onClick = { viewModel.deleteSelectedMessages() }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete selected", tint = Color.Red)
-                        }
-                    } else if (currentChat?.is_group == true) {
+                    IconButton(onClick = { viewModel.clearSelection() }) {
+                        Icon(Icons.Default.Close, contentDescription = "Cancel selection", tint = TextDim)
+                    }
+                    IconButton(onClick = { showBulkDeleteConfirm = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete selected", tint = Color.Red.copy(alpha = 0.8f))
+                    }
+                } else if (currentChat?.is_group == true) {
                         IconButton(onClick = { showEditGroupDialog = true }) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit Group", tint = AccentBlue)
                         }
@@ -263,7 +264,35 @@ fun MessageScreen(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                if (showEditGroupDialog) {
+
+            if (showBulkDeleteConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showBulkDeleteConfirm = false },
+                    title = { Text("Delete Messages") },
+                    text = { Text("Are you sure you want to delete ${selectedIds.size} messages? This action cannot be undone.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                viewModel.deleteSelectedMessages()
+                                showBulkDeleteConfirm = false
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                        ) {
+                            Text("DELETE")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showBulkDeleteConfirm = false }) {
+                            Text("CANCEL", color = TextDim)
+                        }
+                    },
+                    containerColor = BgDark,
+                    titleContentColor = TextWhite,
+                    textContentColor = TextDim
+                )
+            }
+
+            if (showEditGroupDialog) {
                     var editNameState by remember { mutableStateOf(currentChat?.name ?: "") }
                     AlertDialog(
                         onDismissRequest = { showEditGroupDialog = false },
@@ -343,11 +372,18 @@ fun MessageScreen(
                                 },
                                 timeStr = currentZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "",
                                 showReactionPopup = activeReactionMsgId == msg.id,
-                                onShowReactionPopup = { activeReactionMsgId = msg.id },
+                                onShowReactionPopup = { 
+                                    if (activeReactionMsgId != null) {
+                                        activeReactionMsgId = null
+                                    } else {
+                                        activeReactionMsgId = msg.id
+                                    }
+                                },
                                 onCloseReactionPopup = { activeReactionMsgId = null },
                                 onRead = { viewModel.markAsRead(msg.id) },
                                 isGroup = currentChat?.is_group == true,
-                                currentUserId = currentUserId
+                                currentUserId = currentUserId,
+                                members = currentChat?.members ?: emptyList()
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
@@ -435,7 +471,8 @@ fun MessageItem(
     currentUserId: Int,
     isSelected: Boolean,
     selectionMode: Boolean,
-    onSelect: () -> Unit
+    onSelect: () -> Unit,
+    members: List<com.explosion.messenger.data.remote.UserOut>
 ) {
     var showContextMenu by remember { mutableStateOf(false) } // For Delete (Long Press)
 
@@ -526,7 +563,12 @@ fun MessageItem(
                 ReactionMenuPopup(
                     onReact = onReact,
                     onDismiss = onCloseReactionPopup,
-                    readBy = msg.read_by
+                    readBy = msg.read_by,
+                    members = members,
+                    isMine = isMine,
+                    sentAt = msg.created_at,
+                    isGroup = isGroup,
+                    currentUserId = currentUserId
                 )
             }
 
@@ -609,7 +651,16 @@ fun MessageItem(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ReactionMenuPopup(onReact: (String) -> Unit, onDismiss: () -> Unit, readBy: List<MessageReadOutDto>) {
+fun ReactionMenuPopup(
+    onReact: (String) -> Unit, 
+    onDismiss: () -> Unit, 
+    readBy: List<MessageReadOutDto>,
+    members: List<com.explosion.messenger.data.remote.UserOut>,
+    isMine: Boolean,
+    sentAt: String,
+    isGroup: Boolean,
+    currentUserId: Int
+) {
     var isExpanded by remember { mutableStateOf(false) }
     val primary = listOf("❤️", "🤝", "👍", "👌", "🍌", "🐳")
     val extend = listOf("👎", "🖕", "🍾", "🤔", "🥰", "👏", "😁", "🤯", "🤬", "😔", "🎉", "🤩", "🤮", "💩", "🙏", "🕊️", "🤡", "🥱", "🥴", "😍")
@@ -621,10 +672,13 @@ fun ReactionMenuPopup(onReact: (String) -> Unit, onDismiss: () -> Unit, readBy: 
         Card(
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = BgDark),
-            modifier = Modifier.padding(bottom = 8.dp).border(1.dp, BgSidebar, RoundedCornerShape(24.dp)),
+            modifier = Modifier
+                .padding(bottom = 8.dp)
+                .border(1.dp, BgSidebar, RoundedCornerShape(24.dp)),
             elevation = CardDefaults.cardElevation(8.dp)
         ) {
-            Column(modifier = Modifier.padding(8.dp).animateContentSize().widthIn(max = 280.dp)) {
+            Column(modifier = Modifier.padding(12.dp).animateContentSize().widthIn(min = 200.dp, max = 280.dp)) {
+                // Reactions Section
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
@@ -639,45 +693,64 @@ fun ReactionMenuPopup(onReact: (String) -> Unit, onDismiss: () -> Unit, readBy: 
                                 .padding(8.dp)
                         )
                     }
-                    if (!isExpanded) {
+                    IconButton(onClick = { isExpanded = !isExpanded }) {
                         Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Expand",
-                            tint = TextDim,
-                            modifier = Modifier
-                                .align(Alignment.CenterVertically)
-                                .clickable { isExpanded = true }
-                                .padding(8.dp)
-                                .size(28.dp)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowUp,
-                            contentDescription = "Collapse",
-                            tint = TextDim,
-                            modifier = Modifier
-                                .align(Alignment.CenterVertically)
-                                .clickable { isExpanded = false }
-                                .padding(8.dp)
-                                .size(28.dp)
+                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isExpanded) "Collapse" else "Expand",
+                            tint = TextDim
                         )
                     }
                 }
 
-                if (readBy.isNotEmpty()) {
-                    Divider(color = BgSidebar, modifier = Modifier.padding(vertical = 8.dp))
-                    Text(
-                        text = "Read By",
-                        fontSize = 10.sp,
-                        color = TextDim,
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp)
-                    )
-                    readBy.forEach { read ->
-                        val readZDT = try { java.time.ZonedDateTime.parse(read.read_at) } catch(e:Exception){ null }
-                        val timeStr = readZDT?.withZoneSameInstant(java.time.ZoneId.systemDefault())?.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) ?: ""
-                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "User #${read.user_id}", fontSize = 12.sp, color = Color.White, modifier = Modifier.weight(1f))
-                            Text(text = timeStr, fontSize = 10.sp, color = TextDim)
+                Divider(color = BgSidebar, modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
+
+                Text(
+                    text = "Message info",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextWhite,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                if (!isGroup) {
+                    // Individual Chat Layout
+                    val sentZDT = try { java.time.ZonedDateTime.parse(sentAt) } catch(e:Exception){ null }
+                    val sentTimeStr = sentZDT?.withZoneSameInstant(java.time.ZoneId.systemDefault())?.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, HH:mm")) ?: ""
+                    
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "SENT", fontSize = 10.sp, color = TextDim, modifier = Modifier.width(40.dp))
+                            Text(text = sentTimeStr, fontSize = 12.sp, color = TextWhite)
+                        }
+                        
+                        // In 1-on-1, the read event from the OTHER person is what matters
+                        val recipientRead = readBy.find { it.user_id != currentUserId }
+                        
+                        recipientRead?.let { read ->
+                            val readZDT = try { java.time.ZonedDateTime.parse(read.read_at) } catch(e:Exception){ null }
+                            val readTimeStr = readZDT?.withZoneSameInstant(java.time.ZoneId.systemDefault())?.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, HH:mm")) ?: ""
+                            
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = "READ", fontSize = 10.sp, color = TextDim, modifier = Modifier.width(40.dp))
+                                Text(text = readTimeStr, fontSize = 12.sp, color = TextWhite)
+                            }
+                        }
+                    }
+                } else {
+                    // Group Chat Layout
+                    if (readBy.isEmpty()) {
+                        Text(text = "No one has read this yet", fontSize = 11.sp, color = TextDim)
+                    } else {
+                        readBy.forEach { read ->
+                            val user = members.find { it.id == read.user_id }
+                            val userName = user?.username ?: "User #${read.user_id}"
+                            val readZDT = try { java.time.ZonedDateTime.parse(read.read_at) } catch(e:Exception){ null }
+                            val timeStr = readZDT?.withZoneSameInstant(java.time.ZoneId.systemDefault())?.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) ?: ""
+                            
+                            Row(modifier = Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = userName, fontSize = 12.sp, color = TextWhite, modifier = Modifier.weight(1f))
+                                Text(text = timeStr, fontSize = 10.sp, color = TextDim)
+                            }
                         }
                     }
                 }
