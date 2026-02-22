@@ -253,35 +253,13 @@ fun MessageScreen(
                 }
 
                 if (showEditGroupDialog) {
-                    var editNameState by remember { mutableStateOf(currentChat?.name ?: "") }
-                    AlertDialog(
-                        onDismissRequest = { showEditGroupDialog = false },
-                        title = { Text("Edit Group") },
-                        text = {
-                            OutlinedTextField(
-                                value = editNameState,
-                                onValueChange = { editNameState = it },
-                                label = { Text("Group Name") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        },
-                        confirmButton = {
-                            Button(onClick = {
-                                if (editNameState.isNotBlank()) {
-                                    viewModel.updateGroupName(editNameState)
-                                }
-                                showEditGroupDialog = false
-                            }) {
-                                Text("SAVE")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showEditGroupDialog = false }) { Text("Cancel") }
-                        },
-                        containerColor = BgDark,
-                        titleContentColor = TextWhite,
-                        textContentColor = TextDim
+                    GroupSettingsDialog(
+                        viewModel = viewModel,
+                        onDismiss = { showEditGroupDialog = false },
+                        onLeaveOrDelete = {
+                            showEditGroupDialog = false
+                            onBack()
+                        }
                     )
                 }
 

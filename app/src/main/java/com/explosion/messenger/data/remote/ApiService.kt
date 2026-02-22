@@ -81,6 +81,28 @@ interface ApiService {
         @Path("chat_id") chatId: Int,
         @Part file: MultipartBody.Part
     ): Response<ChatDto>
+
+    @POST("chats/{chat_id}/members")
+    suspend fun addMember(
+        @Path("chat_id") chatId: Int,
+        @Body request: AddMemberRequest
+    ): Response<ChatDto>
+
+    @DELETE("chats/{chat_id}/members/{user_id}")
+    suspend fun removeMember(
+        @Path("chat_id") chatId: Int,
+        @Path("user_id") userId: Int
+    ): Response<StatusResponse>
+
+    @PATCH("chats/{chat_id}/members/{user_id}/admin")
+    suspend fun updateMemberAdmin(
+        @Path("chat_id") chatId: Int,
+        @Path("user_id") userId: Int,
+        @Body request: MemberAdminUpdate
+    ): Response<ChatDto>
+
+    @DELETE("chats/{chat_id}")
+    suspend fun deleteChat(@Path("chat_id") chatId: Int): Response<StatusResponse>
 }
 
 @kotlinx.serialization.Serializable
@@ -168,4 +190,21 @@ data class ChatUpdate(
 @kotlinx.serialization.Serializable
 data class BulkDeleteRequest(
     val message_ids: List<Int>
+)
+
+@kotlinx.serialization.Serializable
+data class AddMemberRequest(
+    val user_id: Int
+)
+
+@kotlinx.serialization.Serializable
+data class MemberAdminUpdate(
+    val user_id: Int,
+    val is_admin: Boolean
+)
+
+@kotlinx.serialization.Serializable
+data class StatusResponse(
+    val status: String,
+    val message: String? = null
 )

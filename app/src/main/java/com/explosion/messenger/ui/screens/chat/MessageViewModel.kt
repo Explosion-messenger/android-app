@@ -12,7 +12,11 @@ import com.explosion.messenger.data.remote.MessageReadOutDto
 import com.explosion.messenger.data.remote.NeuralWebSocketManager
 import com.explosion.messenger.data.remote.ReactionToggle
 import com.explosion.messenger.data.remote.BulkDeleteRequest
+import com.explosion.messenger.data.remote.AddMemberRequest
+import com.explosion.messenger.data.remote.MemberAdminUpdate
+import com.explosion.messenger.data.remote.UserOut
 import com.explosion.messenger.util.TokenManager
+import okhttp3.MultipartBody
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -291,6 +295,106 @@ class MessageViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     _messages.value = _messages.value.filter { it.id !in ids }
                     clearSelection()
+                }
+            } catch (e: Exception) {
+                // handle
+            }
+        }
+    }
+
+    private val _userSearchResults = MutableStateFlow<List<UserOut>>(emptyList())
+    val userSearchResults: StateFlow<List<UserOut>> = _userSearchResults.asStateFlow()
+
+    fun searchUsers(query: String) {
+        if (query.length < 2) {
+            _userSearchResults.value = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val response = api.getUsers(query)
+                if (response.isSuccessful) {
+                    val existingIds = _currentChat.value?.members?.map { it.id } ?: emptyList()
+                    _userSearchResults.value = (response.body() ?: emptyList()).filter { it.id !in existingIds }
+                }
+            } catch (e: Exception) {
+                // handle
+            }
+        }
+    }
+
+    fun addMember(userId: Int) {
+        if (currentChatId == -1) return
+        viewModelScope.launch {
+            try {
+                val response = api.addMember(currentChatId, AddMemberRequest(userId))
+                if (response.isSuccessful) {
+                    _currentChat.value = response.body()
+                    _userSearchResults.value = emptyList()
+                }
+            } catch (e: Exception) {
+                // handle
+            }
+        }
+    }
+
+    fun removeMember(userId: Int, onComplete: (Boolean) -> Unit = {}) {
+        if (currentChatId == -1) return
+        viewModelScope.launch {
+            try {
+                val response = api.removeMember(currentChatId, userId)
+                if (response.isSuccessful) {
+                    if (userId == currentUserId) {
+                        onComplete(true) // User left group
+                    } else {
+                        // Re-fetch chat to get updated members
+                        val chatsResponse = api.getChats()
+                        if (chatsResponse.isSuccessful) {
+                            _currentChat.value = chatsResponse.body()?.find { it.id == currentChatId }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // handle
+            }
+        }
+    }
+
+    fun toggleAdmin(userId: Int, currentIsAdmin: Boolean) {
+        if (currentChatId == -1) return
+        viewModelScope.launch {
+            try {
+                val response = api.updateMemberAdmin(currentChatId, userId, MemberAdminUpdate(userId, !currentIsAdmin))
+                if (response.isSuccessful) {
+                    _currentChat.value = response.body()
+                }
+            } catch (e: Exception) {
+                // handle
+            }
+        }
+    }
+
+    fun deleteGroup(onComplete: (Boolean) -> Unit) {
+        if (currentChatId == -1) return
+        viewModelScope.launch {
+            try {
+                val response = api.deleteChat(currentChatId)
+                if (response.isSuccessful) {
+                    onComplete(true)
+                }
+            } catch (e: Exception) {
+                // handle
+            }
+        }
+    }
+
+    fun updateChatAvatar(file: MultipartBody.Part) {
+        if (currentChatId == -1) return
+        viewModelScope.launch {
+            try {
+                val response = api.uploadChatAvatar(currentChatId, file)
+                if (response.isSuccessful) {
+                    _currentChat.value = response.body()
                 }
             } catch (e: Exception) {
                 // handle

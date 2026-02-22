@@ -22,7 +22,9 @@ data class UserOut(
     val username: String,
     val email: String? = null,
     val avatar_path: String? = null,
-    val is_2fa_enabled: Boolean = false
+    val is_2fa_enabled: Boolean = false,
+    val is_chat_admin: Boolean? = false,
+    val is_chat_owner: Boolean? = false
 )
 
 @Serializable
