@@ -11,6 +11,7 @@ import com.explosion.messenger.data.remote.MessageReactionDto
 import com.explosion.messenger.data.remote.MessageReadOutDto
 import com.explosion.messenger.data.remote.NeuralWebSocketManager
 import com.explosion.messenger.data.remote.ReactionToggle
+import com.explosion.messenger.data.remote.BulkDeleteRequest
 import com.explosion.messenger.util.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,9 @@ class MessageViewModel @Inject constructor(
     // List of usernames typing in current chat
     private val _typingUsers = MutableStateFlow<List<String>>(emptyList())
     val typingUsers: StateFlow<List<String>> = _typingUsers.asStateFlow()
+
+    private val _selectedMessageIds = MutableStateFlow<Set<Int>>(emptySet())
+    val selectedMessageIds: StateFlow<Set<Int>> = _selectedMessageIds.asStateFlow()
 
     private var currentChatId: Int = -1
 
@@ -260,6 +264,37 @@ class MessageViewModel @Inject constructor(
     fun sendTypingStatus(isTyping: Boolean) {
         if (currentChatId != -1) {
             webSocketManager.sendTypingStatus(currentChatId, isTyping)
+        }
+    }
+
+    fun toggleSelection(messageId: Int) {
+        val current = _selectedMessageIds.value.toMutableSet()
+        if (current.contains(messageId)) {
+            current.remove(messageId)
+        } else {
+            current.add(messageId)
+        }
+        _selectedMessageIds.value = current
+    }
+
+    fun clearSelection() {
+        _selectedMessageIds.value = emptySet()
+    }
+
+    fun deleteSelectedMessages() {
+        val ids = _selectedMessageIds.value.toList()
+        if (ids.isEmpty()) return
+        
+        viewModelScope.launch {
+            try {
+                val response = api.deleteMessagesBulk(BulkDeleteRequest(ids))
+                if (response.isSuccessful) {
+                    _messages.value = _messages.value.filter { it.id !in ids }
+                    clearSelection()
+                }
+            } catch (e: Exception) {
+                // handle
+            }
         }
     }
 }

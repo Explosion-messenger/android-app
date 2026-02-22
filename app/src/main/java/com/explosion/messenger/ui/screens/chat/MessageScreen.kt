@@ -23,6 +23,9 @@ import androidx.compose.animation.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,6 +71,7 @@ fun MessageScreen(
     
     val currentChat by viewModel.currentChat.collectAsState()
     val typingUsers by viewModel.typingUsers.collectAsState()
+    val selectedIds by viewModel.selectedMessageIds.collectAsState()
     var showEditGroupDialog by remember { mutableStateOf(false) }
     var activeReactionMsgId by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
@@ -231,7 +235,14 @@ fun MessageScreen(
                     }
                 },
                 actions = {
-                    if (currentChat?.is_group == true) {
+                    if (selectedIds.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = "Cancel selection", tint = TextDim)
+                        }
+                        IconButton(onClick = { viewModel.deleteSelectedMessages() }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete selected", tint = Color.Red)
+                        }
+                    } else if (currentChat?.is_group == true) {
                         IconButton(onClick = { showEditGroupDialog = true }) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit Group", tint = AccentBlue)
                         }
@@ -322,6 +333,9 @@ fun MessageScreen(
                             MessageItem(
                                 msg = msg, 
                                 isMine = msg.sender_id == currentUserId,
+                                isSelected = selectedIds.contains(msg.id),
+                                selectionMode = selectedIds.isNotEmpty(),
+                                onSelect = { viewModel.toggleSelection(msg.id) },
                                 onDelete = { viewModel.deleteMessage(msg.id) },
                                 onReact = { emoji -> 
                                     viewModel.toggleReaction(msg.id, emoji)
@@ -418,7 +432,10 @@ fun MessageItem(
     onCloseReactionPopup: () -> Unit,
     onRead: () -> Unit,
     isGroup: Boolean,
-    currentUserId: Int
+    currentUserId: Int,
+    isSelected: Boolean,
+    selectionMode: Boolean,
+    onSelect: () -> Unit
 ) {
     var showContextMenu by remember { mutableStateOf(false) } // For Delete (Long Press)
 
@@ -458,7 +475,19 @@ fun MessageItem(
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (isSelected) Color.White.copy(alpha = 0.1f) else Color.Transparent)
+            .combinedClickable(
+                onClick = {
+                    if (selectionMode) onSelect()
+                    else onShowReactionPopup()
+                },
+                onLongClick = {
+                    onSelect()
+                }
+            )
+            .padding(vertical = 4.dp, horizontal = 16.dp),
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Bottom
     ) {
@@ -512,12 +541,6 @@ fun MessageItem(
                         )
                         .padding(12.dp)
                         .widthIn(max = 280.dp)
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onTap = { onShowReactionPopup() },
-                                onLongPress = { if (isMine) showContextMenu = true }
-                            )
-                        }
                 ) {
                     if (!isMine && isGroup) {
                         Text(

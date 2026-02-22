@@ -68,6 +68,9 @@ interface ApiService {
     @POST("chats/{chat_id}/read")
     suspend fun markChatAsRead(@Path("chat_id") chatId: Int): Response<Unit>
 
+    @POST("messages/bulk/delete")
+    suspend fun deleteMessagesBulk(@Body request: BulkDeleteRequest): Response<Unit>
+
     @Multipart
     @POST("me/avatar")
     suspend fun uploadUserAvatar(@Part file: MultipartBody.Part): Response<UserOut>
@@ -160,4 +163,8 @@ data class MessageDto(
 data class ChatUpdate(
     val name: String? = null,
     val avatar_path: String? = null
+)
+@kotlinx.serialization.Serializable
+data class BulkDeleteRequest(
+    val message_ids: List<Int>
 )
