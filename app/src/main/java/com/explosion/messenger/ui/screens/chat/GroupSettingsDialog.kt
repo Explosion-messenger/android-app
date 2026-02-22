@@ -121,7 +121,7 @@ fun GroupSettingsDialog(
                                         model = "${Constants.AVATAR_URL}${chat?.avatar_path}",
                                         contentDescription = null,
                                         modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Cover
+                                        contentScale = ContentScale.Crop
                                     )
                                 } else {
                                     Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(48.dp), tint = TextDim)
@@ -336,7 +336,7 @@ fun MemberItem(
                     model = if (member.avatar_path != null) "${Constants.AVATAR_URL}${member.avatar_path}" else null,
                     contentDescription = null,
                     modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(BgDark),
-                    contentScale = ContentScale.Cover
+                    contentScale = ContentScale.Crop
                 )
                 if (isOnline) {
                     Box(
@@ -370,7 +370,7 @@ fun MemberItem(
                 }
             }
 
-            if (isCallerOwner && !member.is_chat_owner && !isCurrentUser) {
+            if (isCallerOwner && member.is_chat_owner != true && !isCurrentUser) {
                 IconButton(onClick = onToggleAdmin) {
                     Icon(
                         if (member.is_chat_admin == true) Icons.Default.RemoveModerator else Icons.Default.AddModerator,
@@ -381,7 +381,7 @@ fun MemberItem(
                 }
             }
 
-            if ((isCallerAdmin || isCurrentUser) && !member.is_chat_owner) {
+            if ((isCallerAdmin || isCurrentUser) && member.is_chat_owner != true) {
                 IconButton(onClick = onRemove) {
                     Icon(
                         if (isCurrentUser) Icons.Default.Logout else Icons.Default.Delete,
@@ -427,7 +427,7 @@ fun SearchResultItem(user: UserOut, onClick: () -> Unit) {
                 model = if (user.avatar_path != null) "${Constants.AVATAR_URL}${user.avatar_path}" else null,
                 contentDescription = null,
                 modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(BgDark),
-                contentScale = ContentScale.Cover
+                contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.width(16.dp))
             Text(user.username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f))
