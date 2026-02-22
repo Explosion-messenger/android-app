@@ -35,6 +35,13 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.animation.*
+import androidx.compose.ui.window.Popup
+import androidx.compose.animation.animateContentSize
+import com.explosion.messenger.data.remote.MessageReadOutDto
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +58,7 @@ fun MessageScreen(
     
     val currentChat by viewModel.currentChat.collectAsState()
     var showEditGroupDialog by remember { mutableStateOf(false) }
+    var activeReactionMsgId by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(chatId) {
         viewModel.loadMessages(chatId)
@@ -167,8 +175,14 @@ fun MessageScreen(
                             msg = msg, 
                             isMine = msg.sender_id == currentUserId,
                             onDelete = { viewModel.deleteMessage(msg.id) },
-                            onReact = { emoji -> viewModel.toggleReaction(msg.id, emoji) },
-                            timeStr = currentZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: ""
+                            onReact = { emoji -> 
+                                viewModel.toggleReaction(msg.id, emoji)
+                                activeReactionMsgId = null
+                            },
+                            timeStr = currentZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "",
+                            showReactionPopup = activeReactionMsgId == msg.id,
+                            onShowReactionPopup = { activeReactionMsgId = msg.id },
+                            onCloseReactionPopup = { activeReactionMsgId = null }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -217,9 +231,17 @@ fun MessageScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MessageItem(msg: MessageDto, isMine: Boolean, onDelete: () -> Unit, onReact: (String) -> Unit, timeStr: String) {
+fun MessageItem(
+    msg: MessageDto, 
+    isMine: Boolean, 
+    onDelete: () -> Unit, 
+    onReact: (String) -> Unit, 
+    timeStr: String,
+    showReactionPopup: Boolean,
+    onShowReactionPopup: () -> Unit,
+    onCloseReactionPopup: () -> Unit
+) {
     var showContextMenu by remember { mutableStateOf(false) } // For Delete (Long Press)
-    var showReactionMenu by remember { mutableStateOf(false) } // For React (Double Tap)
 
     if (showContextMenu) {
         AlertDialog(
@@ -253,31 +275,12 @@ fun MessageItem(msg: MessageDto, isMine: Boolean, onDelete: () -> Unit, onReact:
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isMine) Alignment.End else Alignment.Start
     ) {
-        AnimatedVisibility(
-            visible = showReactionMenu,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { 20 }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { 20 })
-        ) {
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = BgSidebar),
-                modifier = Modifier.padding(bottom = 4.dp)
-            ) {
-                Row(modifier = Modifier.padding(8.dp)) {
-                    listOf("👍", "👎", "😂", "❤️", "🚀", "🔥", "🎉", "👀").forEach { emoji ->
-                        Text(
-                            text = emoji,
-                            fontSize = 24.sp,
-                            modifier = Modifier
-                                .clickable { 
-                                    onReact(emoji)
-                                    showReactionMenu = false 
-                                }
-                                .padding(horizontal = 8.dp)
-                        )
-                    }
-                }
-            }
+        if (showReactionPopup) {
+            ReactionMenuPopup(
+                onReact = onReact,
+                onDismiss = onCloseReactionPopup,
+                readBy = msg.read_by
+            )
         }
 
         Row(
@@ -289,10 +292,12 @@ fun MessageItem(msg: MessageDto, isMine: Boolean, onDelete: () -> Unit, onReact:
                         color = if (isMine) AccentGreen else BgSidebar,
                         shape = RoundedCornerShape(16.dp, 16.dp, if (isMine) 4.dp else 16.dp, if (isMine) 16.dp else 4.dp)
                     )
-                    .combinedClickable(
-                        onClick = { showReactionMenu = !showReactionMenu },
-                        onLongClick = { if (isMine) showContextMenu = true }
-                    )
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { onShowReactionPopup() },
+                            onLongPress = { if (isMine) showContextMenu = true }
+                        )
+                    }
                     .padding(12.dp)
                     .widthIn(max = 280.dp)
             ) {
@@ -341,6 +346,85 @@ fun MessageItem(msg: MessageDto, isMine: Boolean, onDelete: () -> Unit, onReact:
                             color = Color.White,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ReactionMenuPopup(onReact: (String) -> Unit, onDismiss: () -> Unit, readBy: List<MessageReadOutDto>) {
+    var isExpanded by remember { mutableStateOf(false) }
+    val primary = listOf("❤️", "🤝", "👍", "👌", "🍌", "🐳")
+    val extend = listOf("👎", "🖕", "🍾", "🤔", "🥰", "👏", "😁", "🤯", "🤬", "😔", "🎉", "🤩", "🤮", "💩", "🙏", "🕊️", "🤡", "🥱", "🥴", "😍")
+
+    Popup(
+        onDismissRequest = onDismiss,
+        alignment = Alignment.TopCenter
+    ) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = BgDark),
+            modifier = Modifier.padding(bottom = 8.dp).border(1.dp, BgSidebar, RoundedCornerShape(24.dp)),
+            elevation = CardDefaults.cardElevation(8.dp)
+        ) {
+            Column(modifier = Modifier.padding(8.dp).animateContentSize().widthIn(max = 280.dp)) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    val visibleEmojis = if (isExpanded) (primary + extend) else primary
+                    visibleEmojis.forEach { emoji ->
+                        Text(
+                            text = emoji,
+                            fontSize = 28.sp,
+                            modifier = Modifier
+                                .clickable { onReact(emoji) }
+                                .padding(8.dp)
+                        )
+                    }
+                    if (!isExpanded) {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Expand",
+                            tint = TextDim,
+                            modifier = Modifier
+                                .align(Alignment.CenterVertically)
+                                .clickable { isExpanded = true }
+                                .padding(8.dp)
+                                .size(28.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowUp,
+                            contentDescription = "Collapse",
+                            tint = TextDim,
+                            modifier = Modifier
+                                .align(Alignment.CenterVertically)
+                                .clickable { isExpanded = false }
+                                .padding(8.dp)
+                                .size(28.dp)
+                        )
+                    }
+                }
+
+                if (readBy.isNotEmpty()) {
+                    Divider(color = BgSidebar, modifier = Modifier.padding(vertical = 8.dp))
+                    Text(
+                        text = "Read By",
+                        fontSize = 10.sp,
+                        color = TextDim,
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp)
+                    )
+                    readBy.forEach { read ->
+                        val readZDT = try { java.time.ZonedDateTime.parse(read.read_at) } catch(e:Exception){ null }
+                        val timeStr = readZDT?.withZoneSameInstant(java.time.ZoneId.systemDefault())?.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) ?: ""
+                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "User #${read.user_id}", fontSize = 12.sp, color = Color.White, modifier = Modifier.weight(1f))
+                            Text(text = timeStr, fontSize = 10.sp, color = TextDim)
+                        }
                     }
                 }
             }

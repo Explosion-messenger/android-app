@@ -134,12 +134,19 @@ data class MessageReactionDto(
 )
 
 @kotlinx.serialization.Serializable
+data class MessageReadOutDto(
+    val user_id: Int,
+    val read_at: String
+)
+
+@kotlinx.serialization.Serializable
 data class MessageDto(
     val id: Int,
     val text: String? = null,
     val sender_id: Int,
     val sender: UserOut,
     val created_at: String,
+    val read_by: List<MessageReadOutDto> = emptyList(),
     val reactions: List<MessageReactionDto> = emptyList()
 )
 
