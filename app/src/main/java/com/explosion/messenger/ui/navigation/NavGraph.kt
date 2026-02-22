@@ -62,13 +62,6 @@ fun NavGraph(tokenManager: TokenManager) {
             val viewModel: ChatViewModel = hiltViewModel()
             ChatScreen(
                 viewModel = viewModel,
-                onLogout = {
-                    navController.context.stopService(android.content.Intent(navController.context, com.explosion.messenger.services.NeuralLinkService::class.java))
-                    tokenManager.clearToken()
-                    navController.navigate("login") {
-                        popUpTo("chat") { inclusive = true }
-                    }
-                },
                 onChatClick = { chatId ->
                     navController.navigate("message/$chatId")
                 },
@@ -77,6 +70,7 @@ fun NavGraph(tokenManager: TokenManager) {
                 }
             )
         }
+
         composable("settings") {
             val viewModel: SettingsViewModel = hiltViewModel()
             SettingsScreen(

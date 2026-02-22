@@ -110,7 +110,7 @@ class NeuralWebSocketManager @Inject constructor(
                         }
                         
                         val currentUserId = tokenManager.getUserId()
-                        if (msgData.sender.id != currentUserId) {
+                        if (msgData.sender.id != currentUserId && !com.explosion.messenger.MainActivity.isAppInForeground) {
                             notificationHelper.showMessageNotification(
                                 sender = msgData.sender.username,
                                 message = msgData.text ?: "[Neural Attachment]"

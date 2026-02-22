@@ -45,7 +45,6 @@ import com.explosion.messenger.ui.theme.TextDim
 @Composable
 fun ChatScreen(
     viewModel: ChatViewModel,
-    onLogout: () -> Unit,
     onChatClick: (Int) -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -71,9 +70,6 @@ fun ChatScreen(
                 actions = {
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings", tint = AccentBlue)
-                    }
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Logout", tint = TextDim)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -352,12 +348,37 @@ fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, 
             )
         }
 
-        if (chat.last_message != null) {
-            Text(
-                text = "12:45", // Mock time
-                color = TextDim,
-                fontSize = 11.sp
-            )
+        Column(horizontalAlignment = Alignment.End) {
+            if (chat.last_message != null) {
+                Text(
+                    text = "12:45", // Mock time
+                    color = TextDim,
+                    fontSize = 11.sp
+                )
+            }
+            if (chat.unread_count > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "UNREAD",
+                    color = com.explosion.messenger.ui.theme.AwayYellow,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                )
+                Box(
+                    modifier = Modifier
+                        .background(com.explosion.messenger.ui.theme.AwayYellow, CircleShape)
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (chat.unread_count > 99) "99+" else chat.unread_count.toString(),
+                        color = BgDark,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
         }
     }
 }

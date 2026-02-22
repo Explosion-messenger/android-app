@@ -130,7 +130,10 @@ fun MessageScreen(
     // Smart Scroll Logic
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
-            if (isAtBottom) {
+            val lastMsg = messages.first()
+            val isMyMsg = lastMsg.sender.id == currentUserId
+            
+            if (isAtBottom || isMyMsg) {
                 listState.animateScrollToItem(0)
             }
         }
@@ -584,9 +587,9 @@ fun MessageItem(
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
                     }
-                    if (msg.file != null && msg.file.file_type.startsWith("image/")) {
+                    if (msg.file != null && msg.file.mime_type.startsWith("image/")) {
                         AsyncImage(
-                            model = "${Constants.BASE_URL.removeSuffix("/")}${msg.file.file_path}",
+                            model = "${Constants.BASE_URL.removeSuffix("/")}${msg.file.path}",
                             contentDescription = "Attached Image",
                             modifier = Modifier
                                 .fillMaxWidth()

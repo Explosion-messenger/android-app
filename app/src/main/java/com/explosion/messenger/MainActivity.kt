@@ -12,6 +12,9 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    companion object {
+        var isAppInForeground = false
+    }
 
     @Inject
     lateinit var tokenManager: TokenManager
@@ -24,11 +27,13 @@ class MainActivity : ComponentActivity() {
         
         lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
             override fun onStart(owner: androidx.lifecycle.LifecycleOwner) {
+                isAppInForeground = true
                 if (tokenManager.getToken() != null) {
                     wsManager.sendPresenceUpdate("online")
                 }
             }
             override fun onStop(owner: androidx.lifecycle.LifecycleOwner) {
+                isAppInForeground = false
                 if (tokenManager.getToken() != null) {
                     wsManager.sendPresenceUpdate("away")
                 }

@@ -160,6 +160,7 @@ data class ChatDto(
     val is_group: Boolean,
     val last_message: MessageDto? = null,
     val avatar_path: String? = null,
+    val unread_count: Int = 0,
     val members: List<UserOut>
 )
 
@@ -192,9 +193,10 @@ data class MessageDto(
 @kotlinx.serialization.Serializable
 data class FileOut(
     val id: Int,
-    val file_path: String,
-    val original_name: String,
-    val file_type: String
+    val path: String,
+    val filename: String,
+    val mime_type: String,
+    val size: Int
 )
 
 @kotlinx.serialization.Serializable
