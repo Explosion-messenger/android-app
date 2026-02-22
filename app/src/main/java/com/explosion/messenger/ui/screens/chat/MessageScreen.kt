@@ -190,9 +190,25 @@ fun MessageScreen(
                                 color = Color.White
                             )
                             
+                            val typingDots = remember { mutableStateOf("") }
+                            LaunchedEffect(typingUsers.isNotEmpty()) {
+                                if (typingUsers.isNotEmpty()) {
+                                    while (true) {
+                                        typingDots.value = ""
+                                        kotlinx.coroutines.delay(400)
+                                        typingDots.value = "."
+                                        kotlinx.coroutines.delay(400)
+                                        typingDots.value = ".."
+                                        kotlinx.coroutines.delay(400)
+                                        typingDots.value = "..."
+                                        kotlinx.coroutines.delay(400)
+                                    }
+                                }
+                            }
+
                             val statusText = when {
                                 typingUsers.isNotEmpty() -> {
-                                    if (typingUsers.size == 1) "${typingUsers[0]} is typing..." else "${typingUsers.size} are typing..."
+                                    if (typingUsers.size == 1) "${typingUsers[0]} is typing${typingDots.value}" else "${typingUsers.size} are typing${typingDots.value}"
                                 }
                                 status != null -> status.lowercase()
                                 else -> ""
@@ -201,8 +217,8 @@ fun MessageScreen(
                             if (statusText.isNotEmpty()) {
                                 Text(
                                     statusText,
-                                    fontSize = 12.sp,
-                                    color = if (typingUsers.isNotEmpty()) AccentBlue else TextDim,
+                                    fontSize = 14.sp,
+                                    color = if (typingUsers.isNotEmpty()) Color(0xFF22C55E) else TextDim,
                                     fontWeight = if (typingUsers.isNotEmpty()) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
@@ -650,23 +666,15 @@ fun MessageStatusTicks(readCount: Int, isGroup: Boolean) {
         Icon(
             imageVector = Icons.Default.Check,
             contentDescription = "Sent",
-            modifier = Modifier.size(14.dp),
-            tint = TextWhite.copy(alpha = 0.5f)
+            modifier = Modifier.size(16.dp),
+            tint = Color.White.copy(alpha = 0.5f)
         )
     } else {
-        val color = if (isGroup) {
-            // For groups, maybe purple for "some read" and blue for "all read"? 
-            // Web usually just uses the accent color for any read.
-            // Let's use AccentBlue for all read cases for simplicity and parity.
-            AccentBlue
-        } else {
-            AccentBlue
-        }
         Icon(
             imageVector = Icons.Default.DoneAll,
             contentDescription = "Read",
-            modifier = Modifier.size(14.dp),
-            tint = color
+            modifier = Modifier.size(16.dp),
+            tint = Color(0xFF3897F0) // Distinct blue tick
         )
     }
 }

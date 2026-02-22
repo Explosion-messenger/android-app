@@ -313,14 +313,30 @@ fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, 
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
             )
+            val typingDots = remember { mutableStateOf("") }
+            LaunchedEffect(!typingUsers.isNullOrEmpty()) {
+                if (!typingUsers.isNullOrEmpty()) {
+                    while (true) {
+                        typingDots.value = ""
+                        kotlinx.coroutines.delay(400)
+                        typingDots.value = "."
+                        kotlinx.coroutines.delay(400)
+                        typingDots.value = ".."
+                        kotlinx.coroutines.delay(400)
+                        typingDots.value = "..."
+                        kotlinx.coroutines.delay(400)
+                    }
+                }
+            }
+
             val typingText = when {
                 typingUsers.isNullOrEmpty() -> chat.last_message?.text ?: "No messages yet"
-                typingUsers.size == 1 -> "${typingUsers[0]} is typing..."
-                else -> "${typingUsers.size} users are typing..."
+                typingUsers.size == 1 -> "${typingUsers[0]} is typing${typingDots.value}"
+                else -> "${typingUsers.size} users are typing${typingDots.value}"
             }
             Text(
                 text = typingText,
-                color = if (!typingUsers.isNullOrEmpty()) AccentBlue else TextDim,
+                color = if (!typingUsers.isNullOrEmpty()) Color(0xFF22C55E) else TextDim,
                 fontSize = 14.sp,
                 maxLines = 1,
                 fontWeight = if (!typingUsers.isNullOrEmpty()) FontWeight.Bold else FontWeight.Normal

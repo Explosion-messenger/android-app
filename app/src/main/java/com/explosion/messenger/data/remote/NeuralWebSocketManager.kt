@@ -10,6 +10,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,11 +84,9 @@ class NeuralWebSocketManager @Inject constructor(
     private val _readReceipts = MutableSharedFlow<ReadReceiptData>()
     val readReceipts: SharedFlow<ReadReceiptData> = _readReceipts
 
-    private val _userStatuses = MutableSharedFlow<UserStatusData>()
-    val userStatuses: SharedFlow<UserStatusData> = _userStatuses
-
-    private val _onlineList = MutableSharedFlow<Map<Int, String>>()
-    val onlineList: SharedFlow<Map<Int, String>> = _onlineList
+    // user_id -> status (online, away)
+    private val _onlineStatusMap = MutableStateFlow<Map<Int, String>>(emptyMap())
+    val onlineStatusMap: StateFlow<Map<Int, String>> = _onlineStatusMap.asStateFlow()
 
     private val _typingUpdates = MutableSharedFlow<TypingData>()
     val typingUpdates: SharedFlow<TypingData> = _typingUpdates
@@ -128,12 +129,18 @@ class NeuralWebSocketManager @Inject constructor(
                     } else if (wsMsg.type == "user_status") {
                         val statusData = json.decodeFromJsonElement<UserStatusData>(wsMsg.data!!)
                         scope.launch {
-                            _userStatuses.emit(statusData)
+                            val current = _onlineStatusMap.value.toMutableMap()
+                            if (statusData.status == "offline") {
+                                current.remove(statusData.user_id)
+                            } else {
+                                current[statusData.user_id] = statusData.status
+                            }
+                            _onlineStatusMap.value = current
                         }
                     } else if (wsMsg.type == "online_list") {
                         val listData = json.decodeFromJsonElement<Map<Int, String>>(wsMsg.data!!)
                         scope.launch {
-                            _onlineList.emit(listData)
+                            _onlineStatusMap.value = listData
                         }
                     } else if (wsMsg.type == "typing") {
                         val typingData = json.decodeFromJsonElement<TypingData>(wsMsg.data!!)

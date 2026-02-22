@@ -28,30 +28,14 @@ class ChatViewModel @Inject constructor(
     private val wsManager: com.explosion.messenger.data.remote.NeuralWebSocketManager
 ) : ViewModel() {
 
-    private val _userStatuses = MutableStateFlow<Map<Int, String>>(emptyMap())
-    val userStatuses: StateFlow<Map<Int, String>> = _userStatuses
 
     // chat_id -> List of users typing
     private val _typingUsers = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
     val typingUsers: StateFlow<Map<Int, List<String>>> = _typingUsers
 
+    val userStatuses: StateFlow<Map<Int, String>> = wsManager.onlineStatusMap
+
     init {
-        viewModelScope.launch {
-            wsManager.onlineList.collect { list ->
-                _userStatuses.value = list
-            }
-        }
-        viewModelScope.launch {
-            wsManager.userStatuses.collect { update ->
-                val current = _userStatuses.value.toMutableMap()
-                if (update.status == "offline") {
-                    current.remove(update.user_id)
-                } else {
-                    current[update.user_id] = update.status
-                }
-                _userStatuses.value = current
-            }
-        }
         viewModelScope.launch {
             wsManager.typingUpdates.collect { data ->
                 val current = _typingUsers.value.toMutableMap()
