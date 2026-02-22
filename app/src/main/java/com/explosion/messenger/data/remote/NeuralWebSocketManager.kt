@@ -33,7 +33,8 @@ data class NewMessageData(
     val sender: UserOut,
     val text: String? = null,
     val file: FileOut? = null,
-    val created_at: String = ""
+    val created_at: String = "",
+    val reply_to: MessageReplyOutDto? = null
 )
 
 @Serializable

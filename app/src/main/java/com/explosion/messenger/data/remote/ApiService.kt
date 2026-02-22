@@ -51,7 +51,7 @@ interface ApiService {
     suspend fun getMessages(@Path("chat_id") chatId: Int, @Query("offset") offset: Int = 0): Response<List<MessageDto>>
 
     @POST("messages/send")
-    suspend fun sendMessage(@Body request: MessageCreateRequest): Response<MessageDto>
+    suspend fun sendMessage(@Body request: MessageCreate): Response<MessageDto>
 
     @Multipart
     @POST("files/upload")
@@ -147,10 +147,11 @@ data class CreateChatRequest(
 )
 
 @kotlinx.serialization.Serializable
-data class MessageCreateRequest(
+data class MessageCreate(
     val chat_id: Int,
     val text: String? = null,
-    val file_id: Int? = null
+    val file_id: Int? = null,
+    val reply_to_id: Int? = null
 )
 
 @kotlinx.serialization.Serializable
@@ -179,6 +180,13 @@ data class MessageReadOutDto(
 )
 
 @kotlinx.serialization.Serializable
+data class MessageReplyOutDto(
+    val id: Int,
+    val text: String? = null,
+    val sender: UserOut
+)
+
+@kotlinx.serialization.Serializable
 data class MessageDto(
     val id: Int,
     val chat_id: Int = 0,
@@ -188,7 +196,8 @@ data class MessageDto(
     val created_at: String,
     val read_by: List<MessageReadOutDto> = emptyList(),
     val reactions: List<MessageReactionDto> = emptyList(),
-    val file: FileOut? = null
+    val file: FileOut? = null,
+    val reply_to: MessageReplyOutDto? = null
 )
 
 @kotlinx.serialization.Serializable

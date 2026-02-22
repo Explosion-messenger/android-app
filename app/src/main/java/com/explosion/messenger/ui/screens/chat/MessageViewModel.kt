@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.explosion.messenger.data.remote.ApiService
 import com.explosion.messenger.data.remote.ChatDto
 import com.explosion.messenger.data.remote.ChatUpdate
-import com.explosion.messenger.data.remote.MessageCreateRequest
+import com.explosion.messenger.data.remote.MessageCreate
 import com.explosion.messenger.data.remote.MessageDto
 import com.explosion.messenger.data.remote.MessageReactionDto
 import com.explosion.messenger.data.remote.MessageReadOutDto
@@ -52,6 +52,9 @@ class MessageViewModel @Inject constructor(
     private val _selectedMessageIds = MutableStateFlow<Set<Int>>(emptySet())
     val selectedMessageIds: StateFlow<Set<Int>> = _selectedMessageIds.asStateFlow()
 
+    private val _replyingTo = MutableStateFlow<MessageDto?>(null)
+    val replyingTo: StateFlow<MessageDto?> = _replyingTo.asStateFlow()
+
     private var currentChatId: Int = -1
 
     init {
@@ -64,9 +67,11 @@ class MessageViewModel @Inject constructor(
                         text = newMsg.text,
                         sender_id = newMsg.sender.id,
                         sender = newMsg.sender,
-                        created_at = java.time.Instant.now().toString(),
+                        created_at = newMsg.created_at,
                         read_by = emptyList(),
-                        reactions = emptyList()
+                        reactions = emptyList(),
+                        file = newMsg.file,
+                        reply_to = newMsg.reply_to
                     )
                     _messages.value = listOf(dto) + _messages.value
                 }
@@ -177,12 +182,18 @@ class MessageViewModel @Inject constructor(
         }
     }
 
+    fun setReplyingTo(message: MessageDto?) {
+        _replyingTo.value = message
+    }
+
     fun sendMessage(text: String) {
         if (text.isBlank()) return
         
         viewModelScope.launch {
             try {
-                val response = api.sendMessage(MessageCreateRequest(chat_id = currentChatId, text = text))
+                val replyId = _replyingTo.value?.id
+                _replyingTo.value = null
+                val response = api.sendMessage(MessageCreate(chat_id = currentChatId, text = text, reply_to_id = replyId))
                 if (response.isSuccessful) {
                     // Message usually arrives via WS or we can add it directly. Let's rely on REST response if WS is slow.
                     // Wait, websocket might duplicate it. Backend sends to all participants in the room via WS.
@@ -202,7 +213,9 @@ class MessageViewModel @Inject constructor(
                 if (uploadResponse.isSuccessful) {
                     val fileOut = uploadResponse.body()
                     if (fileOut != null) {
-                        val msgRequest = MessageCreateRequest(chat_id = currentChatId, file_id = fileOut.id)
+                        val replyId = _replyingTo.value?.id
+                        _replyingTo.value = null
+                        val msgRequest = MessageCreate(chat_id = currentChatId, file_id = fileOut.id, reply_to_id = replyId)
                         api.sendMessage(msgRequest)
                     }
                 }

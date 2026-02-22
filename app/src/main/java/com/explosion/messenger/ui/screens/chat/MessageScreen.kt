@@ -101,20 +101,39 @@ fun MessageScreen(
     onBack: () -> Unit
 ) {
     val messages by viewModel.messages.collectAsState()
+    val selectedMessageIds by viewModel.selectedMessageIds.collectAsState()
+    val replyingTo by viewModel.replyingTo.collectAsState()
     val loading by viewModel.loading.collectAsState()
+    
     val currentUserId = viewModel.currentUserId
     var textState by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     
     val currentChat by viewModel.currentChat.collectAsState()
     val typingUsers by viewModel.typingUsers.collectAsState()
-    val selectedIds by viewModel.selectedMessageIds.collectAsState()
     var showEditGroupDialog by remember { mutableStateOf(false) }
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
     var activeReactionMsgId by remember { mutableStateOf<Int?>(null) }
     val userStatuses by viewModel.userStatuses.collectAsState()
     var lastDismissedTime by remember { mutableStateOf(0L) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val pickMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            val file = java.io.File(context.cacheDir, "upload_temp.jpg")
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                java.io.FileOutputStream(file).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+            val body = okhttp3.MultipartBody.Part.createFormData("file", file.name, requestFile)
+            viewModel.sendFile(body)
+            scope.launch {
+                listState.animateScrollToItem(0)
+            }
+        }
+    }
 
     LaunchedEffect(chatId) {
         viewModel.loadMessages(chatId)
@@ -219,7 +238,7 @@ fun MessageScreen(
                     }
                 },
                 actions = {
-                    if (selectedIds.isNotEmpty()) {
+                    if (selectedMessageIds.isNotEmpty()) {
                         IconButton(onClick = { viewModel.clearSelection() }) {
                             Icon(Icons.Default.Close, contentDescription = "Cancel selection", tint = TextDim)
                         }
@@ -251,7 +270,7 @@ fun MessageScreen(
                     AlertDialog(
                         onDismissRequest = { showBulkDeleteConfirm = false },
                         title = { Text("Delete Messages") },
-                        text = { Text("Are you sure you want to delete ${selectedIds.size} messages? This action cannot be undone.") },
+                        text = { Text("Are you sure you want to delete ${selectedMessageIds.size} messages? This action cannot be undone.") },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -324,44 +343,91 @@ fun MessageScreen(
                                 MessageItem(
                                     msg = msg, 
                                     isMine = msg.sender_id == currentUserId,
-                                    isSelected = selectedIds.contains(msg.id),
-                                selectionMode = selectedIds.isNotEmpty(),
-                                onSelect = { viewModel.toggleSelection(msg.id) },
-                                onDelete = { viewModel.deleteMessage(msg.id) },
-                                onReact = { emoji -> 
-                                    viewModel.toggleReaction(msg.id, emoji)
-                                    activeReactionMsgId = null
-                                },
-                                timeStr = currentZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "",
-                                showReactionPopup = activeReactionMsgId == msg.id,
-                                onShowReactionPopup = { 
-                                    if (activeReactionMsgId != null) {
+                                    isSelected = selectedMessageIds.contains(msg.id),
+                                    selectionMode = selectedMessageIds.isNotEmpty(),
+                                    onSelect = { viewModel.toggleSelection(msg.id) },
+                                    onDelete = { viewModel.deleteMessage(msg.id) },
+                                    onReact = { emoji -> 
+                                        viewModel.toggleReaction(msg.id, emoji)
+                                        activeReactionMsgId = null
+                                    },
+                                    timeStr = currentZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "",
+                                    showReactionPopup = activeReactionMsgId == msg.id,
+                                    onShowReactionPopup = { 
+                                        if (activeReactionMsgId != null) {
+                                            activeReactionMsgId = null
+                                            lastDismissedTime = System.currentTimeMillis()
+                                        } else {
+                                            val now = System.currentTimeMillis()
+                                            if (now - lastDismissedTime > 150) {
+                                                activeReactionMsgId = msg.id
+                                            }
+                                        }
+                                    },
+                                    onCloseReactionPopup = { 
                                         activeReactionMsgId = null
                                         lastDismissedTime = System.currentTimeMillis()
-                                    } else {
-                                        val now = System.currentTimeMillis()
-                                        if (now - lastDismissedTime > 150) {
-                                            activeReactionMsgId = msg.id
-                                        }
-                                    }
-                                },
-                                onCloseReactionPopup = { 
-                                    activeReactionMsgId = null
-                                    lastDismissedTime = System.currentTimeMillis()
-                                },
-                                onRead = { viewModel.markAsRead(msg.id) },
-                                isGroup = currentChat?.is_group == true,
-                                currentUserId = currentUserId,
-                                members = currentChat?.members ?: emptyList(),
-                                token = viewModel.currentToken
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
+                                    },
+                                    onRead = { viewModel.markAsRead(msg.id) },
+                                    isGroup = currentChat?.is_group == true,
+                                    currentUserId = viewModel.currentUserId,
+                                    members = currentChat?.members ?: emptyList(),
+                                    token = viewModel.currentToken,
+                                    onReply = { viewModel.setReplyingTo(it) }
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
                         }
                     }
                 }
-            } // Close the 'else' block
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (replyingTo != null) {
+                    Surface(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp)),
+                        color = AccentBlue.copy(alpha = 0.1f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(4.dp)
+                                    .height(32.dp)
+                                    .background(AccentBlue, RoundedCornerShape(2.dp))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Replying to ${replyingTo?.sender?.username}",
+                                    fontSize = 11.sp,
+                                    color = AccentBlue,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = replyingTo?.text ?: "[Attachment]",
+                                    fontSize = 12.sp,
+                                    color = TextDim,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.setReplyingTo(null) },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Cancel Reply", tint = TextDim)
+                            }
+                        }
+                    }
+                }
 
                 Row(
                     modifier = Modifier
@@ -370,23 +436,6 @@ fun MessageScreen(
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val context = LocalContext.current
-                    val pickMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                        if (uri != null) {
-                            val file = java.io.File(context.cacheDir, "upload_temp.jpg")
-                            context.contentResolver.openInputStream(uri)?.use { input ->
-                                java.io.FileOutputStream(file).use { output ->
-                                    input.copyTo(output)
-                                }
-                            }
-                            val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                            val body = okhttp3.MultipartBody.Part.createFormData("file", file.name, requestFile)
-                            viewModel.sendFile(body)
-                            scope.launch {
-                                listState.animateScrollToItem(0)
-                            }
-                        }
-                    }
 
                     IconButton(
                         onClick = { pickMedia.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
@@ -475,7 +524,8 @@ fun MessageItem(
     isGroup: Boolean,
     currentUserId: Int,
     members: List<com.explosion.messenger.data.remote.UserOut>,
-    token: String = ""
+    token: String = "",
+    onReply: (MessageDto) -> Unit = {}
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
 
@@ -555,7 +605,8 @@ fun MessageItem(
                     isMine = isMine,
                     sentAt = msg.created_at,
                     isGroup = isGroup,
-                    currentUserId = currentUserId
+                    currentUserId = currentUserId,
+                    onReply = { onReply(msg) }
                 )
             }
 
@@ -588,6 +639,36 @@ fun MessageItem(
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
+                    }
+                    if (msg.reply_to != null) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = (if (isMine) Color.Black.copy(alpha = 0.2f) else BgDark.copy(alpha = 0.5f))),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .padding(bottom = 8.dp)
+                                .fillMaxWidth()
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isMine) Color.White.copy(alpha = 0.2f) else AccentBlue.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Text(
+                                    text = msg.reply_to.sender.username,
+                                    fontSize = 10.sp,
+                                    color = if (isMine) Color.White.copy(alpha = 0.9f) else AccentBlue,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = msg.reply_to.text ?: "[Attachment]",
+                                    fontSize = 11.sp,
+                                    color = if (isMine) Color.White.copy(alpha = 0.7f) else TextDim,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
                     if (msg.file != null && msg.file.mime_type.startsWith("image/")) {
                         AsyncImage(
@@ -699,7 +780,8 @@ fun ReactionMenuPopup(
     isMine: Boolean,
     sentAt: String,
     isGroup: Boolean,
-    currentUserId: Int
+    currentUserId: Int,
+    onReply: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     val emojis = listOf("👍", "❤️", "😂", "😮", "😢", "🔥", "🍌", "🐳")
@@ -730,6 +812,22 @@ fun ReactionMenuPopup(
                                 .padding(8.dp)
                         )
                     }
+                }
+
+                Divider(color = BgSidebar, modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
+
+                Button(
+                    onClick = {
+                        onReply()
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth().height(40.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentBlue.copy(alpha = 0.1f))
+                ) {
+                    Icon(Icons.Default.Reply, contentDescription = null, modifier = Modifier.size(16.dp), tint = AccentBlue)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Reply", fontSize = 12.sp, color = AccentBlue, fontWeight = FontWeight.Bold)
                 }
 
                 Divider(color = BgSidebar, modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
