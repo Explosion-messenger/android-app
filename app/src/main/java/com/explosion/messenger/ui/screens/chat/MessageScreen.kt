@@ -40,6 +40,32 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
 @Composable
+fun DatePlaque(date: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = BgSidebar.copy(alpha = 0.5f)),
+            modifier = Modifier.border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp)),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Text(
+                text = date.uppercase(),
+                color = TextDim,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                letterSpacing = 1.5.sp
+            )
+        }
+    }
+}
+
+@Composable
 fun AnimatedTypingText(names: List<String>) {
     var dots by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
@@ -285,19 +311,20 @@ fun MessageScreen(
                                 pZDT?.toLocalDate()
                             } else null
                             
-                            if (currDay != null && currDay != prevMsgDay) {
-                                Text(
-                                    text = currDay.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
-                                    color = TextDim,
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.padding(vertical = 12.dp)
-                                )
-                            }
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                if (currDay != null && currDay != prevMsgDay) {
+                                    DatePlaque(
+                                        date = currDay.format(DateTimeFormatter.ofPattern("d MMMM, yyyy"))
+                                    )
+                                }
 
-                            MessageItem(
-                                msg = msg, 
-                                isMine = msg.sender_id == currentUserId,
-                                isSelected = selectedIds.contains(msg.id),
+                                MessageItem(
+                                    msg = msg, 
+                                    isMine = msg.sender_id == currentUserId,
+                                    isSelected = selectedIds.contains(msg.id),
                                 selectionMode = selectedIds.isNotEmpty(),
                                 onSelect = { viewModel.toggleSelection(msg.id) },
                                 onDelete = { viewModel.deleteMessage(msg.id) },
@@ -331,8 +358,9 @@ fun MessageScreen(
                         }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(8.dp))
+            } // Close the 'else' block
+
+            Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
                     modifier = Modifier
