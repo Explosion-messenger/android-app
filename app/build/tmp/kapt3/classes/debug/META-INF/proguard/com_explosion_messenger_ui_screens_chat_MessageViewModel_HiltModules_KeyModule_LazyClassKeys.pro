@@ -1,0 +1,1 @@
+-keep,allowobfuscation,allowshrinking class com.explosion.messenger.ui.screens.chat.MessageViewModel

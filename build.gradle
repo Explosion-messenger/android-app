@@ -1,0 +1,24 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:9.0.1'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.10'
+        classpath 'com.google.dagger:hilt-android-gradle-plugin:2.58'
+        classpath 'org.jetbrains.kotlin:kotlin-serialization:2.2.10'
+        classpath 'org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.2.10'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}

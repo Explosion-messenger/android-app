@@ -1,0 +1,4 @@
+com.explosion.messenger
+drawable ic_launcher
+string app_name
+style Theme_ExplosionMessenger
