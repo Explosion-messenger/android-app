@@ -31,6 +31,10 @@ class ChatViewModel @Inject constructor(
     private val _userStatuses = MutableStateFlow<Map<Int, String>>(emptyMap())
     val userStatuses: StateFlow<Map<Int, String>> = _userStatuses
 
+    // chat_id -> List of users typing
+    private val _typingUsers = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
+    val typingUsers: StateFlow<Map<Int, List<String>>> = _typingUsers
+
     init {
         viewModelScope.launch {
             wsManager.onlineList.collect { list ->
@@ -46,6 +50,41 @@ class ChatViewModel @Inject constructor(
                     current[update.user_id] = update.status
                 }
                 _userStatuses.value = current
+            }
+        }
+        viewModelScope.launch {
+            wsManager.typingUpdates.collect { data ->
+                val current = _typingUsers.value.toMutableMap()
+                val list = (current[data.chat_id] ?: emptyList()).toMutableList()
+                
+                if (data.is_typing) {
+                    if (!list.contains(data.username)) {
+                        list.add(data.username)
+                    }
+                } else {
+                    list.remove(data.username)
+                }
+                
+                if (list.isEmpty()) {
+                    current.remove(data.chat_id)
+                } else {
+                    current[data.chat_id] = list
+                }
+                _typingUsers.value = current
+
+                // Auto-clear after 5 seconds
+                if (data.is_typing) {
+                    kotlinx.coroutines.delay(5000)
+                    // Re-check if still in list and clear if it's been long enough
+                    // Note: This is a simple implementation, ideally we'd track timestamp per user
+                    val finalCurrent = _typingUsers.value.toMutableMap()
+                    val finalList = (finalCurrent[data.chat_id] ?: emptyList()).toMutableList()
+                    if (finalList.remove(data.username)) {
+                        if (finalList.isEmpty()) finalCurrent.remove(data.chat_id)
+                        else finalCurrent[data.chat_id] = finalList
+                        _typingUsers.value = finalCurrent
+                    }
+                }
             }
         }
     }

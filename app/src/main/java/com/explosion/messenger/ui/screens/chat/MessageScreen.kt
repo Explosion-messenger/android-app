@@ -64,6 +64,7 @@ fun MessageScreen(
     val listState = rememberLazyListState()
     
     val currentChat by viewModel.currentChat.collectAsState()
+    val typingUsers by viewModel.typingUsers.collectAsState()
     var showEditGroupDialog by remember { mutableStateOf(false) }
     var activeReactionMsgId by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
@@ -96,6 +97,17 @@ fun MessageScreen(
         }
     }
 
+    // Typing status sender logic
+    LaunchedEffect(textState) {
+        if (textState.isNotEmpty()) {
+            viewModel.sendTypingStatus(true)
+            kotlinx.coroutines.delay(4000) // Backend timeout is usually around 5s
+            viewModel.sendTypingStatus(false)
+        } else {
+            viewModel.sendTypingStatus(false)
+        }
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -104,21 +116,27 @@ fun MessageScreen(
                     val otherMember = currentChat?.members?.firstOrNull { it.id != currentUserId }
                     val status = if (currentChat?.is_group == true) null else otherMember?.id?.let { userStatuses[it] } ?: "offline"
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            (currentChat?.name ?: otherMember?.username ?: "CHAT").uppercase(),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 2.sp
-                        )
-                        if (status != null && status != "offline") {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(if (status == "online") Color(0xFF22C55E) else com.explosion.messenger.ui.theme.AwayYellow)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                (currentChat?.name ?: otherMember?.username ?: "CHAT").uppercase(),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 2.sp
                             )
+                            if (status != null && status != "offline" && typingUsers.isEmpty()) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(if (status == "online") Color(0xFF22C55E) else com.explosion.messenger.ui.theme.AwayYellow)
+                                )
+                            }
+                        }
+                        if (typingUsers.isNotEmpty()) {
+                            val typingText = if (typingUsers.size == 1) "${typingUsers[0]} is typing..." else "${typingUsers.size} are typing..."
+                            Text(typingText, fontSize = 10.sp, color = AccentBlue, fontWeight = FontWeight.Bold)
                         }
                     }
                 },

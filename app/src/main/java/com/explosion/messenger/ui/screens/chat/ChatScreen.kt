@@ -110,6 +110,7 @@ fun ChatScreen(
         }
 
         val userStatuses by viewModel.userStatuses.collectAsState()
+        val typingUsersMap by viewModel.typingUsers.collectAsState()
 
         LazyColumn(
             modifier = Modifier
@@ -117,7 +118,7 @@ fun ChatScreen(
                 .padding(padding)
         ) {
             items(chats) { chat ->
-                ChatItem(chat, viewModel.currentUserId, userStatuses, onChatClick)
+                ChatItem(chat, viewModel.currentUserId, userStatuses, typingUsersMap[chat.id], onChatClick)
             }
         }
     }
@@ -251,7 +252,7 @@ fun CreateChatDialog(viewModel: ChatViewModel, onDismiss: () -> Unit, onChatCrea
 }
 
 @Composable
-fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, onChatClick: (Int) -> Unit) {
+fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, typingUsers: List<String>?, onChatClick: (Int) -> Unit) {
     val otherMember = chat.members.firstOrNull { it.id != currentUserId } ?: chat.members.firstOrNull()
     val status = if (chat.is_group) null else otherMember?.id?.let { userStatuses[it] } ?: "offline"
 
@@ -311,11 +312,17 @@ fun ChatItem(chat: ChatDto, currentUserId: Int, userStatuses: Map<Int, String>, 
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
             )
+            val typingText = when {
+                typingUsers.isNullOrEmpty() -> chat.last_message?.text ?: "No messages yet"
+                typingUsers.size == 1 -> "${typingUsers[0]} is typing..."
+                else -> "${typingUsers.size} users are typing..."
+            }
             Text(
-                text = chat.last_message?.text ?: "No messages yet",
-                color = TextDim,
+                text = typingText,
+                color = if (!typingUsers.isNullOrEmpty()) AccentBlue else TextDim,
                 fontSize = 13.sp,
-                maxLines = 1
+                maxLines = 1,
+                fontWeight = if (!typingUsers.isNullOrEmpty()) FontWeight.Bold else FontWeight.Normal
             )
         }
 

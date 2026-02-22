@@ -40,6 +40,10 @@ class MessageViewModel @Inject constructor(
     private val _userStatuses = MutableStateFlow<Map<Int, String>>(emptyMap())
     val userStatuses: StateFlow<Map<Int, String>> = _userStatuses
 
+    // List of usernames typing in current chat
+    private val _typingUsers = MutableStateFlow<List<String>>(emptyList())
+    val typingUsers: StateFlow<List<String>> = _typingUsers.asStateFlow()
+
     private var currentChatId: Int = -1
 
     init {
@@ -128,6 +132,29 @@ class MessageViewModel @Inject constructor(
                     current[update.user_id] = update.status
                 }
                 _userStatuses.value = current
+            }
+        }
+
+        // Collect typing updates
+        viewModelScope.launch {
+            webSocketManager.typingUpdates.collect { data ->
+                if (data.chat_id == currentChatId) {
+                    val list = _typingUsers.value.toMutableList()
+                    if (data.is_typing) {
+                        if (!list.contains(data.username)) list.add(data.username)
+                    } else {
+                        list.remove(data.username)
+                    }
+                    _typingUsers.value = list
+
+                    if (data.is_typing) {
+                        kotlinx.coroutines.delay(5000)
+                        val finalList = _typingUsers.value.toMutableList()
+                        if (finalList.remove(data.username)) {
+                            _typingUsers.value = finalList
+                        }
+                    }
+                }
             }
         }
     }
@@ -244,6 +271,12 @@ class MessageViewModel @Inject constructor(
             } catch (e: Exception) {
                 // handle
             }
+        }
+    }
+
+    fun sendTypingStatus(isTyping: Boolean) {
+        if (currentChatId != -1) {
+            webSocketManager.sendTypingStatus(currentChatId, isTyping)
         }
     }
 }

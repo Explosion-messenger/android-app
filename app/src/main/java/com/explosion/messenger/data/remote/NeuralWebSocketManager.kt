@@ -54,6 +54,14 @@ data class UserStatusData(
     val online: Boolean
 )
 
+@Serializable
+data class TypingData(
+    val chat_id: Int,
+    val user_id: Int,
+    val username: String,
+    val is_typing: Boolean
+)
+
 @Singleton
 class NeuralWebSocketManager @Inject constructor(
     private val client: OkHttpClient,
@@ -78,6 +86,9 @@ class NeuralWebSocketManager @Inject constructor(
 
     private val _onlineList = MutableSharedFlow<Map<Int, String>>()
     val onlineList: SharedFlow<Map<Int, String>> = _onlineList
+
+    private val _typingUpdates = MutableSharedFlow<TypingData>()
+    val typingUpdates: SharedFlow<TypingData> = _typingUpdates
 
     fun connect() {
         val token = tokenManager.getToken() ?: return
@@ -124,6 +135,11 @@ class NeuralWebSocketManager @Inject constructor(
                         scope.launch {
                             _onlineList.emit(listData)
                         }
+                    } else if (wsMsg.type == "typing") {
+                        val typingData = json.decodeFromJsonElement<TypingData>(wsMsg.data!!)
+                        scope.launch {
+                            _typingUpdates.emit(typingData)
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -143,6 +159,11 @@ class NeuralWebSocketManager @Inject constructor(
 
     fun sendPresenceUpdate(status: String) {
         val jsonMsg = """{"type":"user_status_update","status":"$status"}"""
+        webSocket?.send(jsonMsg)
+    }
+
+    fun sendTypingStatus(chatId: Int, isTyping: Boolean) {
+        val jsonMsg = """{"type":"typing","chat_id":$chatId,"is_typing":$isTyping}"""
         webSocket?.send(jsonMsg)
     }
 
