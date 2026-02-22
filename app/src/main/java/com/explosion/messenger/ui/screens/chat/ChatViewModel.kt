@@ -36,6 +36,7 @@ class ChatViewModel @Inject constructor(
     val userStatuses: StateFlow<Map<Int, String>> = wsManager.onlineStatusMap
 
     init {
+        // Collect typing updates
         viewModelScope.launch {
             wsManager.typingUpdates.collect { data ->
                 val current = _typingUsers.value.toMutableMap()
@@ -59,14 +60,50 @@ class ChatViewModel @Inject constructor(
                 // Auto-clear after 5 seconds
                 if (data.is_typing) {
                     kotlinx.coroutines.delay(5000)
-                    // Re-check if still in list and clear if it's been long enough
-                    // Note: This is a simple implementation, ideally we'd track timestamp per user
                     val finalCurrent = _typingUsers.value.toMutableMap()
                     val finalList = (finalCurrent[data.chat_id] ?: emptyList()).toMutableList()
                     if (finalList.remove(data.username)) {
                         if (finalList.isEmpty()) finalCurrent.remove(data.chat_id)
                         else finalCurrent[data.chat_id] = finalList
                         _typingUsers.value = finalCurrent
+                    }
+                }
+            }
+        }
+
+        // Collect new messages to update last_message and unread_count in chat list
+        viewModelScope.launch {
+            wsManager.messages.collect { msgData ->
+                _chats.value = _chats.value.map { chat ->
+                    if (chat.id != msgData.chat_id) return@map chat
+                    val isMyMsg = msgData.sender_id == currentUserId
+                    val newUnread = if (!isMyMsg) (chat.unread_count + 1) else chat.unread_count
+                    val lastMsg = com.explosion.messenger.data.remote.MessageDto(
+                        id = msgData.id,
+                        chat_id = msgData.chat_id,
+                        sender_id = msgData.sender_id,
+                        sender = msgData.sender,
+                        text = msgData.text,
+                        file = msgData.file,
+                        created_at = msgData.created_at,
+                        reactions = emptyList(),
+                        read_by = emptyList()
+                    )
+                    chat.copy(last_message = lastMsg, unread_count = newUnread)
+                }.sortedByDescending {
+                    it.last_message?.created_at ?: ""
+                }
+            }
+        }
+
+        // Collect read receipts to decrement unread_count when current user reads
+        viewModelScope.launch {
+            wsManager.readReceipts.collect { receipt ->
+                if (receipt.user_id == currentUserId) {
+                    _chats.value = _chats.value.map { chat ->
+                        if (chat.id == receipt.chat_id) {
+                            chat.copy(unread_count = maxOf(0, chat.unread_count - 1))
+                        } else chat
                     }
                 }
             }
@@ -92,6 +129,12 @@ class ChatViewModel @Inject constructor(
             } finally {
                 _loading.value = false
             }
+        }
+    }
+
+    fun clearUnread(chatId: Int) {
+        _chats.value = _chats.value.map { chat ->
+            if (chat.id == chatId) chat.copy(unread_count = 0) else chat
         }
     }
 

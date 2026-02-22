@@ -181,6 +181,7 @@ data class MessageReadOutDto(
 @kotlinx.serialization.Serializable
 data class MessageDto(
     val id: Int,
+    val chat_id: Int = 0,
     val text: String? = null,
     val sender_id: Int,
     val sender: UserOut,

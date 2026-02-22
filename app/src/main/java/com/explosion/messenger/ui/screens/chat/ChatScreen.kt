@@ -114,7 +114,10 @@ fun ChatScreen(
                 .padding(padding)
         ) {
             items(chats) { chat ->
-                ChatItem(chat, viewModel.currentUserId, userStatuses, typingUsersMap[chat.id], onChatClick)
+                ChatItem(chat, viewModel.currentUserId, userStatuses, typingUsersMap[chat.id]) { chatId ->
+                    viewModel.clearUnread(chatId)
+                    onChatClick(chatId)
+                }
             }
         }
     }

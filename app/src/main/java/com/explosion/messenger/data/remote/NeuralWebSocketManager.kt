@@ -29,8 +29,11 @@ data class WSMessage(
 data class NewMessageData(
     val id: Int,
     val chat_id: Int,
+    val sender_id: Int,
     val sender: UserOut,
-    val text: String? = null
+    val text: String? = null,
+    val file: FileOut? = null,
+    val created_at: String = ""
 )
 
 @Serializable
