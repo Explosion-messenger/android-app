@@ -3,6 +3,7 @@ package com.explosion.messenger
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.explosion.messenger.data.remote.NeuralWebSocketManager
 import com.explosion.messenger.ui.navigation.NavGraph
 import com.explosion.messenger.ui.theme.ExplosionMessengerTheme
 import com.explosion.messenger.util.TokenManager
@@ -15,8 +16,24 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var tokenManager: TokenManager
 
+    @Inject
+    lateinit var wsManager: NeuralWebSocketManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onStart(owner: androidx.lifecycle.LifecycleOwner) {
+                if (tokenManager.getToken() != null) {
+                    wsManager.sendPresenceUpdate("online")
+                }
+            }
+            override fun onStop(owner: androidx.lifecycle.LifecycleOwner) {
+                if (tokenManager.getToken() != null) {
+                    wsManager.sendPresenceUpdate("away")
+                }
+            }
+        })
         
         // Request Notification Permission for Android 13+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {

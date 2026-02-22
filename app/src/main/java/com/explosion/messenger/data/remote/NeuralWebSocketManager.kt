@@ -39,6 +39,14 @@ data class ReactionData(
     val action: String // "added" or "removed"
 )
 
+@Serializable
+data class ReadReceiptData(
+    val message_id: Int,
+    val chat_id: Int,
+    val user_id: Int,
+    val read_at: String
+)
+
 @Singleton
 class NeuralWebSocketManager @Inject constructor(
     private val client: OkHttpClient,
@@ -54,6 +62,9 @@ class NeuralWebSocketManager @Inject constructor(
 
     private val _reactions = MutableSharedFlow<ReactionData>()
     val reactions: SharedFlow<ReactionData> = _reactions
+
+    private val _readReceipts = MutableSharedFlow<ReadReceiptData>()
+    val readReceipts: SharedFlow<ReadReceiptData> = _readReceipts
 
     fun connect() {
         val token = tokenManager.getToken() ?: return
@@ -85,6 +96,11 @@ class NeuralWebSocketManager @Inject constructor(
                         scope.launch {
                             _reactions.emit(reactData)
                         }
+                    } else if (wsMsg.type == "message_read") {
+                        val readData = json.decodeFromJsonElement<ReadReceiptData>(wsMsg.data!!)
+                        scope.launch {
+                            _readReceipts.emit(readData)
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -100,6 +116,11 @@ class NeuralWebSocketManager @Inject constructor(
                 // Handle reconnection
             }
         })
+    }
+
+    fun sendPresenceUpdate(status: String) {
+        val jsonMsg = """{"type":"user_status_update","status":"$status"}"""
+        webSocket?.send(jsonMsg)
     }
 
     fun disconnect() {

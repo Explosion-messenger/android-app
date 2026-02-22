@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Check
@@ -62,14 +63,33 @@ fun MessageScreen(
     val currentChat by viewModel.currentChat.collectAsState()
     var showEditGroupDialog by remember { mutableStateOf(false) }
     var activeReactionMsgId by remember { mutableStateOf<Int?>(null) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(chatId) {
         viewModel.loadMessages(chatId)
     }
 
+    // Track if user is at the bottom (index 0 for reverseLayout)
+    val isAtBottom by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0
+        }
+    }
+
+    // Smart Scroll Logic
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+            val lastMsg = messages.firstOrNull() // Newest because of reverseLayout list order? 
+            // wait, list is reversed in UI, but what about the backing data?
+            // viewModel.loadMessages: response.body()?.reversed()
+            // webSocketManager.messages.collect: [dto] + _messages.value
+            // So messages[0] is the NEWEST.
+            
+            val isMyMsg = lastMsg?.sender_id == currentUserId
+            
+            if (isMyMsg || isAtBottom) {
+                listState.animateScrollToItem(0)
+            }
         }
     }
 
@@ -105,133 +125,158 @@ fun MessageScreen(
         },
         containerColor = BgDark
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (showEditGroupDialog) {
-                var editNameState by remember { mutableStateOf(currentChat?.name ?: "") }
-                AlertDialog(
-                    onDismissRequest = { showEditGroupDialog = false },
-                    title = { Text("Edit Group") },
-                    text = {
-                        OutlinedTextField(
-                            value = editNameState,
-                            onValueChange = { editNameState = it },
-                            label = { Text("Group Name") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    confirmButton = {
-                        Button(onClick = {
-                            if (editNameState.isNotBlank()) {
-                                viewModel.updateGroupName(editNameState)
-                            }
-                            showEditGroupDialog = false
-                        }) {
-                            Text("SAVE")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showEditGroupDialog = false }) { Text("Cancel") }
-                    }
-                )
-            }
-            if (loading && messages.isEmpty()) {
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = AccentGreen)
-                }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    reverseLayout = true
-                ) {
-                    items(
-                        count = messages.size,
-                        key = { index -> messages[index].id }
-                    ) { index ->
-                        val msg = messages[index]
-                        
-                        // Simple Date Divider Logic: Check if day differs from the next message in list (because of reverseLayout, next is index+1)
-                        val currentZDT = try { ZonedDateTime.parse(msg.created_at) } catch (e: Exception) { null }
-                        val currDay = currentZDT?.toLocalDate()
-                        
-                        val prevMsgDay = if (index + 1 < messages.size) {
-                            val pZDT = try { ZonedDateTime.parse(messages[index + 1].created_at) } catch (e: Exception) { null }
-                            pZDT?.toLocalDate()
-                        } else null
-                        
-                        if (currDay != null && currDay != prevMsgDay) {
-                            Text(
-                                text = currDay.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
-                                color = TextDim,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(vertical = 12.dp)
-                            )
-                        }
-
-                        MessageItem(
-                            msg = msg, 
-                            isMine = msg.sender_id == currentUserId,
-                            onDelete = { viewModel.deleteMessage(msg.id) },
-                            onReact = { emoji -> 
-                                viewModel.toggleReaction(msg.id, emoji)
-                                activeReactionMsgId = null
-                            },
-                            timeStr = currentZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "",
-                            showReactionPopup = activeReactionMsgId == msg.id,
-                            onShowReactionPopup = { activeReactionMsgId = msg.id },
-                            onCloseReactionPopup = { activeReactionMsgId = null },
-                            onRead = { viewModel.markAsRead(msg.id) },
-                            isGroup = currentChat?.is_group == true,
-                            currentUserId = currentUserId
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Input Area
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(BgSidebar)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
-                OutlinedTextField(
-                    value = textState,
-                    onValueChange = { textState = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Type a message...", color = TextDim) },
-                    shape = RoundedCornerShape(24.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = AccentGreen,
-                        unfocusedContainerColor = BgDark,
-                        focusedContainerColor = BgDark
+                if (showEditGroupDialog) {
+                    var editNameState by remember { mutableStateOf(currentChat?.name ?: "") }
+                    AlertDialog(
+                        onDismissRequest = { showEditGroupDialog = false },
+                        title = { Text("Edit Group") },
+                        text = {
+                            OutlinedTextField(
+                                value = editNameState,
+                                onValueChange = { editNameState = it },
+                                label = { Text("Group Name") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        },
+                        confirmButton = {
+                            Button(onClick = {
+                                if (editNameState.isNotBlank()) {
+                                    viewModel.updateGroupName(editNameState)
+                                }
+                                showEditGroupDialog = false
+                            }) {
+                                Text("SAVE")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showEditGroupDialog = false }) { Text("Cancel") }
+                        }
                     )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
-                    onClick = {
-                        viewModel.sendMessage(textState)
-                        textState = ""
-                    },
+                }
+                if (loading && messages.isEmpty()) {
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = AccentGreen)
+                    }
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        reverseLayout = true
+                    ) {
+                        items(
+                            count = messages.size,
+                            key = { index -> messages[index].id }
+                        ) { index ->
+                            val msg = messages[index]
+                            
+                            // Simple Date Divider Logic: Check if day differs from the next message in list (because of reverseLayout, next is index+1)
+                            val currentZDT = try { ZonedDateTime.parse(msg.created_at) } catch (e: Exception) { null }
+                            val currDay = currentZDT?.toLocalDate()
+                            
+                            val prevMsgDay = if (index + 1 < messages.size) {
+                                val pZDT = try { ZonedDateTime.parse(messages[index + 1].created_at) } catch (e: Exception) { null }
+                                pZDT?.toLocalDate()
+                            } else null
+                            
+                            if (currDay != null && currDay != prevMsgDay) {
+                                Text(
+                                    text = currDay.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
+                                    color = TextDim,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(vertical = 12.dp)
+                                )
+                            }
+
+                            MessageItem(
+                                msg = msg, 
+                                isMine = msg.sender_id == currentUserId,
+                                onDelete = { viewModel.deleteMessage(msg.id) },
+                                onReact = { emoji -> 
+                                    viewModel.toggleReaction(msg.id, emoji)
+                                    activeReactionMsgId = null
+                                },
+                                timeStr = currentZDT?.withZoneSameInstant(ZoneId.systemDefault())?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "",
+                                showReactionPopup = activeReactionMsgId == msg.id,
+                                onShowReactionPopup = { activeReactionMsgId = msg.id },
+                                onCloseReactionPopup = { activeReactionMsgId = null },
+                                onRead = { viewModel.markAsRead(msg.id) },
+                                isGroup = currentChat?.is_group == true,
+                                currentUserId = currentUserId
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Input Area
+                Row(
                     modifier = Modifier
-                        .background(AccentGreen, RoundedCornerShape(24.dp))
-                        .size(48.dp)
+                        .fillMaxWidth()
+                        .background(BgSidebar)
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Send, contentDescription = "Send", tint = Color.White)
+                    OutlinedTextField(
+                        value = textState,
+                        onValueChange = { textState = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Type a message...", color = TextDim) },
+                        shape = RoundedCornerShape(24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = AccentGreen,
+                            unfocusedContainerColor = BgDark,
+                            focusedContainerColor = BgDark
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = {
+                            viewModel.sendMessage(textState)
+                            textState = ""
+                        },
+                        modifier = Modifier
+                            .background(AccentGreen, RoundedCornerShape(24.dp))
+                            .size(48.dp)
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = "Send", tint = Color.White)
+                    }
+                }
+            }
+
+            // Scroll to Bottom FAB
+            if (!isAtBottom && messages.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = {
+                        scope.launch {
+                            listState.animateScrollToItem(0)
+                        }
+                    },
+                    containerColor = BgSidebar,
+                    contentColor = AccentGreen,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 96.dp, end = 16.dp)
+                        .size(40.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(4.dp)
+                ) {
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Scroll to bottom", modifier = Modifier.size(24.dp))
                 }
             }
         }

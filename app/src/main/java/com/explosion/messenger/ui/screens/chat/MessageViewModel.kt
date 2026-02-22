@@ -8,6 +8,7 @@ import com.explosion.messenger.data.remote.ChatUpdate
 import com.explosion.messenger.data.remote.MessageCreateRequest
 import com.explosion.messenger.data.remote.MessageDto
 import com.explosion.messenger.data.remote.MessageReactionDto
+import com.explosion.messenger.data.remote.MessageReadOutDto
 import com.explosion.messenger.data.remote.NeuralWebSocketManager
 import com.explosion.messenger.data.remote.ReactionToggle
 import com.explosion.messenger.util.TokenManager
@@ -68,19 +69,42 @@ class MessageViewModel @Inject constructor(
                         val rList = msg.reactions.toMutableList()
                         
                         if (incomingReaction.action == "added") {
-                            rList.add(MessageReactionDto(
-                                id = 0,
-                                user_id = incomingReaction.user_id,
-                                emoji = incomingReaction.emoji,
-                                created_at = ""
-                            ))
+                            // Backend now returns full message to toggleReaction, 
+                            // but for live updates from others, we still need this:
+                            if (rList.none { it.user_id == incomingReaction.user_id && it.emoji == incomingReaction.emoji }) {
+                                rList.add(MessageReactionDto(
+                                    id = 0,
+                                    user_id = incomingReaction.user_id,
+                                    emoji = incomingReaction.emoji,
+                                    created_at = ""
+                                ))
+                            }
                         } else {
-                            val removeIdx = rList.indexOfFirst { it.user_id == incomingReaction.user_id && it.emoji == incomingReaction.emoji }
-                            if (removeIdx != -1) rList.removeAt(removeIdx)
+                            rList.removeAll { it.user_id == incomingReaction.user_id && it.emoji == incomingReaction.emoji }
                         }
                         
                         currentList[msgIndex] = msg.copy(reactions = rList)
                         _messages.value = currentList
+                    }
+                }
+            }
+        }
+
+        // Collect real-time read receipts from WebSocket
+        viewModelScope.launch {
+            webSocketManager.readReceipts.collect { readData ->
+                if (readData.chat_id == currentChatId) {
+                    _messages.value = _messages.value.map { msg ->
+                        if (msg.id == readData.message_id) {
+                            if (msg.read_by.none { it.user_id == readData.user_id }) {
+                                msg.copy(
+                                    read_by = msg.read_by + MessageReadOutDto(
+                                        user_id = readData.user_id,
+                                        read_at = readData.read_at
+                                    )
+                                )
+                            } else msg
+                        } else msg
                     }
                 }
             }
@@ -186,6 +210,10 @@ class MessageViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun updatePresence(status: String) {
+        webSocketManager.sendPresenceUpdate(status)
     }
 
     fun markChatAsRead(chatId: Int) {
